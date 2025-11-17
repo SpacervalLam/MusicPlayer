@@ -1,0 +1,14 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="qml/main.qml">../qml/main.qml</file>
+    <file alias="qml/PlayerCard.qml">../qml/PlayerCard.qml</file>
+    <file alias="qml/PlayerCardMini.qml">../qml/PlayerCardMini.qml</file>
+    <file alias="qml/PlayerCardMini_test.qml">../qml/PlayerCardMini_test.qml</file>
+    <file alias="qml/PlaylistPanel.qml">../qml/PlaylistPanel.qml</file>
+    <file alias="qml/components/RoundButton.qml">../qml/components/RoundButton.qml</file>
+    <file alias="qml/components/Visualizer.qml">../qml/components/Visualizer.qml</file>
+    <file alias="qml/components/VolumeSlider.qml">../qml/components/VolumeSlider.qml</file>
+    <file alias="assets/bg_default.jpg">../assets/bg_default.svg</file>
+    <file alias="assets/default_cover.svg">../assets/default_cover.svg</file>
+  </qresource>
+</RCC>

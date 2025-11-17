@@ -1,0 +1,22 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9ecff8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6bb6ff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="90" fill="url(#grad1)" opacity="0.3"/>
+  
+  <!-- Music note icon -->
+  <path d="M70 60 L70 120 Q70 130 80 130 Q90 130 90 120 Q90 110 80 110 Q75 110 72 112 L72 50 L130 40 L130 100 Q130 110 120 110 Q110 110 110 100 Q110 90 120 90 Q125 90 128 92 L128 30 Z" 
+        fill="#ffffff" 
+        opacity="0.8"/>
+  
+  <!-- Decorative elements -->
+  <circle cx="60" cy="60" r="3" fill="#ffffff" opacity="0.4"/>
+  <circle cx="140" cy="60" r="3" fill="#ffffff" opacity="0.4"/>
+  <circle cx="60" cy="140" r="3" fill="#ffffff" opacity="0.4"/>
+  <circle cx="140" cy="140" r="3" fill="#ffffff" opacity="0.4"/>
+</svg>
