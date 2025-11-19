@@ -125,9 +125,18 @@ ApplicationWindow {
         interval: 200  // 默认0.2秒（用于鼠标离开窗口时的隐藏）
         repeat: false
         onTriggered: {
-            // 仅在收纳模式且未已经隐藏 并且 鼠标不在窗口内 时才真正隐藏
-            if (root.isDocked && !root.isHidden && !mainMouseArea.containsMouse) {
-                hideWindow()
+            // 使用全局鼠标位置判断是否真正离开窗口
+            if (root.isDocked && !root.isHidden) {
+                var globalX = playerBackend.globalMouseX
+                var globalY = playerBackend.globalMouseY
+                var windowX = root.x
+                var windowY = root.y
+                
+                // 如果鼠标不在窗口区域内，才真正隐藏
+                if (globalX < windowX || globalX > windowX + root.width ||
+                    globalY < windowY || globalY > windowY + root.height) {
+                    hideWindow()
+                }
             }
         }
     }
@@ -138,8 +147,17 @@ ApplicationWindow {
         interval: 30  // 0.03秒快速隐藏
         repeat: false
         onTriggered: {
-            if (root.isDocked && !root.isHidden && !mainMouseArea.containsMouse) {
-                hideWindow()
+            if (root.isDocked && !root.isHidden) {
+                var globalX = playerBackend.globalMouseX
+                var globalY = playerBackend.globalMouseY
+                var windowX = root.x
+                var windowY = root.y
+                
+                // 如果鼠标不在窗口区域内，才真正隐藏
+                if (globalX < windowX || globalX > windowX + root.width ||
+                    globalY < windowY || globalY > windowY + root.height) {
+                    hideWindow()
+                }
             }
             root.shouldAutoHide = false  // 重置标志
         }
@@ -182,6 +200,29 @@ ApplicationWindow {
             } else {
                 // 窗口可见时，确保延迟定时器停止
                 edgeDelayTimer.stop()
+            }
+        }
+    }
+
+    // 鼠标离开检查定时器 - 延迟检查鼠标是否真正离开窗口
+    Timer {
+        id: exitCheckTimer
+        interval: 100  // 100ms延迟
+        repeat: false
+        onTriggered: {
+            // 延迟检查：使用全局鼠标位置判断是否真正离开窗口
+            if (root.isDocked && !root.isHidden) {
+                // 检查全局鼠标位置是否在窗口区域内
+                var globalX = playerBackend.globalMouseX
+                var globalY = playerBackend.globalMouseY
+                var windowX = root.x
+                var windowY = root.y
+                
+                // 如果鼠标不在窗口区域内，才启动隐藏定时器
+                if (globalX < windowX || globalX > windowX + root.width ||
+                    globalY < windowY || globalY > windowY + root.height) {
+                    hideTimer.restart()
+                }
             }
         }
     }
@@ -241,7 +282,7 @@ ApplicationWindow {
         id: mainMouseArea
         anchors.fill: parent
         hoverEnabled: true
-        propagateComposedEvents: true
+        propagateComposedEvents: true  // 允许事件传播到子组件
         focus: true
         // 确保可以接收键盘事件
         Keys.enabled: true
@@ -341,16 +382,21 @@ ApplicationWindow {
 
         onExited: {
             // 鼠标离开窗口时，在收纳模式下启动隐藏定时器（不触发快速隐藏）
+            // 立即更新全局鼠标位置，然后启动延迟检查
             if (root.isDocked && !root.isHidden) {
                 root.shouldAutoHide = false  // 鼠标离开不触发快速隐藏
-                hideTimer.restart()
+                // 立即更新全局鼠标位置
+                playerBackend.updateGlobalMousePosition()
+                // 延迟100ms再启动隐藏定时器，给鼠标移动到子组件的时间
+                exitCheckTimer.restart()
             }
         }
 
         onEntered: {
-            // 鼠标进入窗口时，取消隐藏定时器
+            // 鼠标进入窗口时，取消隐藏定时器和离开检查定时器
             if (root.isDocked && !root.isHidden) {
                 hideTimer.stop()
+                exitCheckTimer.stop()  // 停止离开检查定时器
             }
         }
     }
