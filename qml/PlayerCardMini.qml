@@ -117,10 +117,10 @@ Rectangle {
             Layout.fillHeight: true
             Layout.minimumHeight: 120
 
-            // 展开功能的MouseArea - 在按钮容器级别，排除唱片区域
+            // 展开功能的MouseArea - 在按钮容器级别，排除唱片和扇形按钮区域
             MouseArea {
                 anchors.fill: parent
-                // 使用位置判断排除唱片区域
+                // 使用位置判断排除唱片和扇形按钮区域
                 onClicked: function(mouse) {
                     // 唱片在此容器中的相对位置
                     var discX = parent.width - 100  // parent.width - 唱片宽度
@@ -128,13 +128,205 @@ Rectangle {
                     var discWidth = 100
                     var discHeight = 100
                     
+                    // 扇形按钮区域位置（围绕唱片）
+                    var sectorCenterX = parent.width / 2
+                    var sectorCenterY = parent.height / 2
+                    var sectorOuterRadius = 70  // 扇形外径
+                    var sectorInnerRadius = 55  // 扇形内径
+                    
+                    // 计算点击位置到扇形中心的距离
+                    var dx = mouse.x - sectorCenterX
+                    var dy = mouse.y - sectorCenterY
+                    var distance = Math.sqrt(dx * dx + dy * dy)
+                    
+                    // 计算点击位置的角度（从正右方向开始，顺时针为正）
+                    var angle = Math.atan2(dy, dx)
+                    if (angle < 0) angle += 2 * Math.PI
+                    
+                    // 转换为度数（0度在正右方，90度在正下方）
+                    var angleDegrees = angle * 180 / Math.PI
+                    
                     // 检查点击是否在唱片区域内
                     var clickInDisc = (mouse.x >= discX && mouse.x <= discX + discWidth &&
                                        mouse.y >= discY && mouse.y <= discY + discHeight)
                     
-                    // 只有在非唱片区域点击时才触发展开
-                    if (!clickInDisc) {
+                    // 检查点击是否在扇形按钮区域内
+                    var clickInSector = (distance >= sectorInnerRadius && distance <= sectorOuterRadius &&
+                                        ((angleDegrees >= 90 && angleDegrees <= 180) ||   // 6点到9点（下一首）
+                                         (angleDegrees >= 180 && angleDegrees <= 270)))   // 9点到12点（上一首）
+                    
+                    // 只有在非唱片区域且非扇形按钮区域点击时才触发展开
+                    if (!clickInDisc && !clickInSector) {
                         root.expandRequested()
+                    }
+                }
+            }
+
+            // ---------------------------
+            // 扇形控制按钮区域（围绕唱片底部）
+            // ---------------------------
+            Item {
+                id: sectorButtons
+                anchors.centerIn: disc
+                width: disc.width + 40  // 扇形按钮的外径
+                height: disc.height + 40
+                z: 6
+
+                // 供两个Canvas共享的扇形点判断函数
+                function pointInSector(mouseX, mouseY, innerR, outerR, startDeg, endDeg) {
+                    var cx = width / 2;
+                    var cy = height / 2;
+                    var dx = mouseX - cx;
+                    var dy = mouseY - cy;
+                    var dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < innerR || dist > outerR) return false;
+                    var angle = Math.atan2(dy, dx);
+                    if (angle < 0) angle += 2 * Math.PI;
+                    var deg = angle * 180 / Math.PI;
+                    // normalize start/end (assume startDeg < endDeg and within [0,360])
+                    return (deg >= startDeg && deg <= endDeg);
+                }
+
+                // 统一的MouseArea处理所有悬停事件
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    
+                    onPositionChanged: {
+                        var outerRadius = parent.width / 2;
+                        var innerRadius = disc.width / 2 + 5;
+                        
+                        // 检查下一首按钮悬停状态
+                        var nextWasHovered = nextButton.isHovered;
+                        nextButton.isHovered = sectorButtons.pointInSector(mouse.x, mouse.y, innerRadius, outerRadius, 90, 180);
+                        if (nextWasHovered !== nextButton.isHovered) {
+                            nextButton.requestPaint();
+                        }
+                        
+                        // 检查上一首按钮悬停状态
+                        var prevWasHovered = prevButton.isHovered;
+                        prevButton.isHovered = sectorButtons.pointInSector(mouse.x, mouse.y, innerRadius, outerRadius, 180, 270);
+                        if (prevWasHovered !== prevButton.isHovered) {
+                            prevButton.requestPaint();
+                        }
+                    }
+                    
+                    onExited: { 
+                        nextButton.isHovered = false; 
+                        prevButton.isHovered = false;
+                        nextButton.requestPaint();
+                        prevButton.requestPaint();
+                    }
+                    
+                    onClicked: {
+                        var outerRadius = parent.width / 2;
+                        var innerRadius = disc.width / 2 + 5;
+                        
+                        if (sectorButtons.pointInSector(mouse.x, mouse.y, innerRadius, outerRadius, 90, 180)) {
+                            if (playerBackend) playerBackend.next();
+                        } else if (sectorButtons.pointInSector(mouse.x, mouse.y, innerRadius, outerRadius, 180, 270)) {
+                            if (playerBackend) playerBackend.previous();
+                        }
+                    }
+                }
+
+                // 下一首按钮（覆盖 6 点钟到 9 点钟）
+                Canvas {
+                    id: nextButton
+                    anchors.fill: parent
+                    z: 1  // 与上一首按钮相同的层级，通过事件处理避免冲突
+                    
+                    property bool isHovered: false
+                    
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        var centerX = width / 2
+                        var centerY = height / 2
+                        var outerRadius = width / 2
+                        var innerRadius = disc.width / 2 + 5
+                        
+                        ctx.clearRect(0, 0, width, height)
+                        
+                        ctx.beginPath()
+                        // 外圆弧：从 6 点 (π/2) → 9 点 (π)
+                        ctx.arc(centerX, centerY, outerRadius, 
+                                Math.PI * 0.5,   // 6 点
+                                Math.PI * 1.0)   // 9 点 (逆时针)
+                        // 内圆弧：从 9 点 (π) → 6 点 (π/2) 逆向回去
+                        ctx.arc(centerX, centerY, innerRadius, 
+                                Math.PI * 1.0, 
+                                Math.PI * 0.5, true)
+                        ctx.closePath()
+                        
+                        ctx.fillStyle = isHovered ? "#40FFFFFF" : "#30FFFFFF"
+                        ctx.fill()
+                        ctx.strokeStyle = "#60FFFFFF"
+                        ctx.lineWidth = 1
+                        ctx.stroke()
+                    }
+                    
+
+                    
+                    // 图标
+                    Text {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: parent.height * 0.28
+                        text: "▶"
+                        font.pixelSize: 16
+                        color: "white"
+                        style: Text.Outline
+                        styleColor: "black"
+                        rotation: -90   // 指向上方的箭头，符合扇形方向
+                    }
+                }
+
+                // 上一首按钮（覆盖 9 点钟到 12 点钟）
+                Canvas {
+                    id: prevButton
+                    anchors.fill: parent
+                    z: 1  // 与下一首按钮相同的层级，通过事件处理避免冲突
+                    
+                    property bool isHovered: false
+                    
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        var centerX = width / 2
+                        var centerY = height / 2
+                        var outerRadius = width / 2
+                        var innerRadius = disc.width / 2 + 5
+                        
+                        ctx.clearRect(0, 0, width, height)
+                        
+                        ctx.beginPath()
+                        // 外圆弧：9 点 (π) → 12 点 (3π/2)
+                        ctx.arc(centerX, centerY, outerRadius, 
+                                Math.PI * 1.0,        // 9 点
+                                Math.PI * 1.5)        // 12 点 (逆时针到 3π/2)
+                        // 内圆弧：12 点 → 9 点（逆时针）
+                        ctx.arc(centerX, centerY, innerRadius, 
+                                Math.PI * 1.5, 
+                                Math.PI * 1.0, true)
+                        ctx.closePath()
+                        
+                        ctx.fillStyle = isHovered ? "#40FFFFFF" : "#30FFFFFF"
+                        ctx.fill()
+                        ctx.strokeStyle = "#60FFFFFF"
+                        ctx.lineWidth = 1
+                        ctx.stroke()
+                    }
+                    
+
+                    
+                    // 图标
+                    Text {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: parent.height * -0.28
+                        text: "◀"
+                        font.pixelSize: 16
+                        color: "white"
+                        style: Text.Outline
+                        styleColor: "black"
+                        rotation: 90     // 指向下方，符合扇形方向
                     }
                 }
             }
