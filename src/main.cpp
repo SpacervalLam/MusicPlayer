@@ -1,4 +1,4 @@
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QDir>
@@ -7,14 +7,23 @@
 #include "playlistmodel.h"
 #include "playerbackend.h"
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 int main(int argc, char *argv[])
 {
+#ifdef WIN32
+    // 确保设置为GUI应用程序
+    ShowWindow(GetConsoleWindow(), SW_HIDE);
+#endif
+
     // 设置 FFmpeg 日志级别为 quiet 以禁用调试输出
     qputenv("AV_LOG_LEVEL", "quiet");
     qputenv("FFREPORT", "file=nul:");
     qputenv("QT_LOGGING_RULES", "*.debug=false;*.info=false");
     
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
     
     // 设置Basic样式以支持控件自定义
     QQuickStyle::setStyle("Basic");

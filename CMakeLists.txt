@@ -30,6 +30,18 @@ qt_add_executable(app
     src/resources.qrc
 )
 
+# Windows 特定配置
+if(WIN32)
+    # 启用Windows资源编译
+    enable_language(RC)
+    # 手动添加资源文件
+    target_sources(app PRIVATE resources.rc)
+    # 设置为Windows GUI应用程序，不显示控制台窗口
+    set_target_properties(app PROPERTIES 
+        WIN32_EXECUTABLE TRUE
+    )
+endif()
+
 # 链接 Qt 库
 target_link_libraries(app PRIVATE
     Qt6::Quick
@@ -51,4 +63,15 @@ qt_add_qml_module(app
     VERSION 1.0
     QML_FILES
         qml/main.qml
+        qml/PlayerCard.qml
+        qml/PlayerCardMini.qml
+        qml/PlaylistPanel.qml
+        qml/components/RoundButton.qml
+        qml/components/Visualizer.qml
+        qml/components/VolumeSlider.qml
+    IMPORTS
+        QtQuick.Controls
+        QtQuick.Layouts
+        QtQuick.Dialogs
+        QtQuick.Effects
 )

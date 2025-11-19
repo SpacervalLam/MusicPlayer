@@ -31,6 +31,8 @@ class PlayerBackend : public QObject
     Q_PROPERTY(int globalMouseX READ globalMouseX NOTIFY globalMouseXChanged)
     Q_PROPERTY(int globalMouseY READ globalMouseY NOTIFY globalMouseYChanged)
     Q_PROPERTY(QString backgroundImage READ backgroundImage NOTIFY backgroundImageChanged)
+    Q_PROPERTY(QStringList backgroundImageList READ backgroundImageList NOTIFY backgroundImageListChanged)
+    Q_PROPERTY(int currentBackgroundIndex READ currentBackgroundIndex NOTIFY currentBackgroundIndexChanged)
     Q_PROPERTY(QString musicFolder READ musicFolder NOTIFY musicFolderChanged)
     Q_PROPERTY(int playMode READ playMode NOTIFY playModeChanged)
     Q_PROPERTY(QVariantList spectrum READ spectrum NOTIFY spectrumChanged)
@@ -55,6 +57,8 @@ public:
     int globalMouseX() const { return m_globalMouseX; }
     int globalMouseY() const { return m_globalMouseY; }
     QString backgroundImage() const { return m_backgroundImage; }
+    QStringList backgroundImageList() const { return m_backgroundImageList; }
+    int currentBackgroundIndex() const { return m_currentBackgroundIndex; }
     QString musicFolder() const { return m_musicFolder; }
     int playMode() const { return m_playMode; }
     QVariantList spectrum() const;
@@ -73,6 +77,10 @@ public slots:
     void updateGlobalMousePosition();
     void setBackgroundImage(const QString &imagePath);
     void resetBackgroundImage();
+    void addBackgroundImage(const QString &imagePath);
+    void addBackgroundImages(const QStringList &imagePaths);
+    void removeBackgroundImage(const QString &imagePath);
+    void setBackgroundByIndex(int index);
     void setMusicFolder(const QString &folderPath);
     void saveSettings();
     void loadSettings();
@@ -99,6 +107,8 @@ signals:
     void globalMouseXChanged();
     void globalMouseYChanged();
     void backgroundImageChanged();
+    void backgroundImageListChanged();
+    void currentBackgroundIndexChanged();
     void musicFolderChanged();
     void musicFolderNeeded();
     void playModeChanged();
@@ -140,6 +150,8 @@ private:
     int m_globalMouseX = 0;
     int m_globalMouseY = 0;
     QString m_backgroundImage;
+    QStringList m_backgroundImageList;
+    int m_currentBackgroundIndex = -1;
     QString m_musicFolder;
     int m_playMode; // 0: Sequential, 1: Loop One, 2: Loop All, 3: Random
     

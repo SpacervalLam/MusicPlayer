@@ -34,6 +34,11 @@ Rectangle {
         
         antialiasing: true
         
+        // 🔥 关键：属性变化时自动请求刷新
+        onIconTypeChanged: requestPaint()
+        onIconColorChanged: requestPaint()
+        onIconSizeChanged: requestPaint()
+        
         onPaint: {
             var ctx = getContext("2d")
             ctx.clearRect(0, 0, width, height)
@@ -42,157 +47,6 @@ Rectangle {
             
             var scale = iconSize / 24
             ctx.scale(scale, scale)
-            
-            ctx.strokeStyle = "#444444"
-            ctx.lineWidth = 3
-            ctx.lineCap = "round"
-            ctx.lineJoin = "round"
-            
-            if (iconType === "play") {
-                ctx.beginPath()
-                ctx.moveTo(6, 4)
-                ctx.lineTo(6, 20)
-                ctx.lineTo(18, 12)
-                ctx.closePath()
-                ctx.stroke()
-            } else if (iconType === "pause") {
-                ctx.beginPath()
-                ctx.moveTo(7, 6)
-                ctx.lineTo(7, 18)
-                ctx.moveTo(17, 6)
-                ctx.lineTo(17, 18)
-                ctx.stroke()
-            } else if (iconType === "prev") {
-                ctx.beginPath()
-                ctx.moveTo(3, 5)
-                ctx.lineTo(3, 19)
-                ctx.moveTo(5, 12)
-                ctx.lineTo(14, 5)
-                ctx.lineTo(14, 19)
-                ctx.closePath()
-                ctx.stroke()
-            } else if (iconType === "next") {
-                ctx.beginPath()
-                ctx.moveTo(19, 5)
-                ctx.lineTo(19, 19)
-                ctx.moveTo(19, 12)
-                ctx.lineTo(8, 19)
-                ctx.lineTo(8, 5)
-                ctx.closePath()
-                ctx.stroke()
-            } else if (iconType === "sequential") {
-                ctx.beginPath()
-                ctx.moveTo(4, 8)
-                ctx.lineTo(4, 16)
-                ctx.lineTo(8, 16)
-                ctx.lineTo(8, 8)
-                ctx.closePath()
-                ctx.moveTo(10, 6)
-                ctx.lineTo(20, 12)
-                ctx.lineTo(10, 18)
-                ctx.stroke()
-            } else if (iconType === "loopOne") {
-                ctx.beginPath()
-                ctx.arc(12, 12, 7, -Math.PI/4, Math.PI*1.25, false)
-                ctx.moveTo(17, 7)
-                ctx.lineTo(19, 5)
-                ctx.lineTo(21, 7)
-                ctx.moveTo(19, 5)
-                ctx.lineTo(19, 9)
-                ctx.moveTo(7, 17)
-                ctx.lineTo(5, 19)
-                ctx.lineTo(7, 21)
-                ctx.moveTo(5, 19)
-                ctx.lineTo(9, 19)
-                ctx.stroke()
-                
-                 ctx.save()
-                 ctx.font = "bold 7px Arial"
-                 ctx.fillStyle = "#444444"
-                 ctx.textAlign = "center"
-                 ctx.textBaseline = "middle"
-                 ctx.fillText("1", 12, 12)
-                 ctx.restore()
-            } else if (iconType === "loopAll") {
-                ctx.beginPath()
-                ctx.arc(12, 12, 7, -Math.PI/4, Math.PI*1.25, false)
-                ctx.moveTo(17, 7)
-                ctx.lineTo(19, 5)
-                ctx.lineTo(21, 7)
-                ctx.moveTo(19, 5)
-                ctx.lineTo(19, 9)
-                ctx.moveTo(7, 17)
-                ctx.lineTo(5, 19)
-                ctx.lineTo(7, 21)
-                ctx.moveTo(5, 19)
-                ctx.lineTo(9, 19)
-                ctx.stroke()
-            } else if (iconType === "random") {
-                ctx.beginPath()
-                ctx.moveTo(4, 8)
-                ctx.lineTo(8, 8)
-                ctx.lineTo(12, 12)
-                ctx.lineTo(16, 8)
-                ctx.lineTo(20, 8)
-                ctx.moveTo(4, 16)
-                ctx.lineTo(8, 16)
-                ctx.lineTo(12, 12)
-                ctx.lineTo(16, 16)
-                ctx.lineTo(20, 16)
-                ctx.moveTo(17, 6)
-                ctx.lineTo(20, 8)
-                ctx.lineTo(17, 10)
-                ctx.moveTo(17, 14)
-                ctx.lineTo(20, 16)
-                ctx.lineTo(17, 18)
-                ctx.stroke()
-            } else if (iconType === "volume_low") {
-                ctx.beginPath()
-                ctx.moveTo(4, 8)
-                ctx.lineTo(8, 8)
-                ctx.lineTo(12, 4)
-                ctx.lineTo(12, 20)
-                ctx.lineTo(8, 16)
-                ctx.lineTo(4, 16)
-                ctx.closePath()
-                ctx.stroke()
-                ctx.beginPath()
-                ctx.moveTo(15, 10)
-                ctx.quadraticCurveTo(17, 12, 15, 14)
-                ctx.stroke()
-            } else if (iconType === "volume_high") {
-                ctx.beginPath()
-                ctx.moveTo(4, 8)
-                ctx.lineTo(8, 8)
-                ctx.lineTo(12, 4)
-                ctx.lineTo(12, 20)
-                ctx.lineTo(8, 16)
-                ctx.lineTo(4, 16)
-                ctx.closePath()
-                ctx.stroke()
-                ctx.beginPath()
-                ctx.moveTo(15, 8)
-                ctx.quadraticCurveTo(18, 12, 15, 16)
-                ctx.moveTo(17, 6)
-                ctx.quadraticCurveTo(20, 12, 17, 18)
-                ctx.stroke()
-            } else if (iconType === "volume_muted") {
-                ctx.beginPath()
-                ctx.moveTo(4, 8)
-                ctx.lineTo(8, 8)
-                ctx.lineTo(12, 4)
-                ctx.lineTo(12, 20)
-                ctx.lineTo(8, 16)
-                ctx.lineTo(4, 16)
-                ctx.closePath()
-                ctx.stroke()
-                ctx.beginPath()
-                ctx.moveTo(14, 10)
-                ctx.lineTo(18, 14)
-                ctx.moveTo(18, 10)
-                ctx.lineTo(14, 14)
-                ctx.stroke()
-            }
             
             ctx.strokeStyle = iconColor
             ctx.lineWidth = 2
@@ -205,7 +59,8 @@ Rectangle {
                 ctx.lineTo(6, 20)
                 ctx.lineTo(18, 12)
                 ctx.closePath()
-                ctx.stroke()
+                ctx.fillStyle = iconColor
+                ctx.fill()
             } else if (iconType === "pause") {
                 ctx.beginPath()
                 ctx.moveTo(7, 6)
@@ -262,11 +117,11 @@ Rectangle {
                 ctx.textAlign = "center"
                 ctx.textBaseline = "middle"
                 
-                ctx.strokeStyle = "#444444"
+                ctx.strokeStyle = iconColor
                 ctx.lineWidth = 1
                 ctx.strokeText("1", 12, 12)
                 
-                ctx.fillStyle = "#ffffff"
+                ctx.fillStyle = iconColor
                 ctx.fillText("1", 12, 12)
                 
                 ctx.restore()
@@ -417,19 +272,19 @@ Rectangle {
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                     style: Text.Outline
-                    styleColor: "#888888"
+                    styleColor: "#000000"
                 }
                 
                 Text {
                     text: playerBackend.artist || "Unknown Artist"
-                    font.pixelSize: 14
-                    color: "#e9f7ff"
+                    font.pixelSize: 16
+                    color: "#ffffff"
                     font.family: "Segoe UI, sans-serif"
                     font.weight: Font.Light
-                    opacity: 0.7
+                    opacity: 0.8
                     Layout.fillWidth: true
                     style: Text.Outline
-                    styleColor: "#ffffff"
+                    styleColor: "#000000"
                 }
             }
             

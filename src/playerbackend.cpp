@@ -334,6 +334,16 @@ void PlayerBackend::saveSettings()
         settings.remove("backgroundImage");
     }
     
+    // 保存背景图片列表
+    if (!m_backgroundImageList.isEmpty()) {
+        settings.setValue("backgroundImageList", m_backgroundImageList);
+    } else {
+        settings.remove("backgroundImageList");
+    }
+    
+    // 保存当前背景图片索引
+    settings.setValue("currentBackgroundIndex", m_currentBackgroundIndex);
+    
     // 保存音乐文件夹路径
     if (!m_musicFolder.isEmpty()) {
         settings.setValue("musicFolder", m_musicFolder);
@@ -359,6 +369,14 @@ void PlayerBackend::loadSettings()
         m_backgroundImage = savedBackgroundImage;
         emit backgroundImageChanged();
     }
+    
+    // 加载背景图片列表
+    m_backgroundImageList = settings.value("backgroundImageList", QStringList()).toStringList();
+    emit backgroundImageListChanged();
+    
+    // 加载当前背景图片索引
+    m_currentBackgroundIndex = settings.value("currentBackgroundIndex", -1).toInt();
+    emit currentBackgroundIndexChanged();
     
     // 加载音乐文件夹路径
     QString savedMusicFolder = settings.value("musicFolder").toString();
@@ -614,6 +632,85 @@ bool PlayerBackend::eventFilter(QObject *obj, QEvent *event)
         }
     }
     return QObject::eventFilter(obj, event);
+}
+
+// 背景图片管理方法
+void PlayerBackend::addBackgroundImage(const QString &imagePath)
+{
+    if (QFile::exists(imagePath) && !m_backgroundImageList.contains(imagePath)) {
+        m_backgroundImageList.append(imagePath);
+        emit backgroundImageListChanged();
+        
+        // 如果是第一张图片，设置为当前背景
+        if (m_backgroundImageList.size() == 1) {
+            setBackgroundImage(imagePath);
+            m_currentBackgroundIndex = 0;
+            emit currentBackgroundIndexChanged();
+        }
+        
+        saveSettings();
+    }
+}
+
+void PlayerBackend::addBackgroundImages(const QStringList &imagePaths)
+{
+    bool hasNewImages = false;
+    
+    for (const QString &imagePath : imagePaths) {
+        if (QFile::exists(imagePath) && !m_backgroundImageList.contains(imagePath)) {
+            m_backgroundImageList.append(imagePath);
+            hasNewImages = true;
+            
+            // 如果是第一张图片，设置为当前背景
+            if (m_backgroundImageList.size() == 1) {
+                setBackgroundImage(imagePath);
+                m_currentBackgroundIndex = 0;
+                emit currentBackgroundIndexChanged();
+            }
+        }
+    }
+    
+    if (hasNewImages) {
+        emit backgroundImageListChanged();
+        saveSettings();
+    }
+}
+
+void PlayerBackend::removeBackgroundImage(const QString &imagePath)
+{
+    int index = m_backgroundImageList.indexOf(imagePath);
+    if (index >= 0) {
+        m_backgroundImageList.removeAt(index);
+        emit backgroundImageListChanged();
+        
+        // 如果删除的是当前使用的背景图片
+        if (imagePath == m_backgroundImage) {
+            if (m_backgroundImageList.isEmpty()) {
+                resetBackgroundImage();
+                m_currentBackgroundIndex = -1;
+            } else {
+                // 切换到下一张图片
+                int newIndex = qMin(index, m_backgroundImageList.size() - 1);
+                setBackgroundByIndex(newIndex);
+            }
+            emit currentBackgroundIndexChanged();
+        } else if (index < m_currentBackgroundIndex) {
+            // 更新当前索引
+            m_currentBackgroundIndex--;
+            emit currentBackgroundIndexChanged();
+        }
+        
+        saveSettings();
+    }
+}
+
+void PlayerBackend::setBackgroundByIndex(int index)
+{
+    if (index >= 0 && index < m_backgroundImageList.size()) {
+        setBackgroundImage(m_backgroundImageList[index]);
+        m_currentBackgroundIndex = index;
+        emit currentBackgroundIndexChanged();
+    }
 }
 
 #include "playerbackend.moc"

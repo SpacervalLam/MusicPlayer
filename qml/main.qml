@@ -3,7 +3,6 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
-import QtQuick.Controls 2.15
 import QtQuick.Effects
 import "components"
 
@@ -273,10 +272,27 @@ ApplicationWindow {
             console.log("Key pressed in QML:", event.key, event.text)
             if (event.key === Qt.Key_Escape) {
                 console.log("ESC key pressed in QML")
-                // 在展开模式下按ESC键触发收纳
-                if (!root.isDocked) {
-                    dockToRight()
+                console.log("mainContextMenu.visible:", mainContextMenu.visible)
+                console.log("backgroundManagerDialog.visible:", backgroundManagerDialog.visible)
+                
+                var hasOpenDialogs = mainContextMenu.visible || backgroundManagerDialog.visible
+                
+                // 优先关闭所有打开的对话框和菜单
+                if (mainContextMenu.visible) {
+            mainContextMenu.close()
+                    console.log("Closed context menu")
                 }
+                if (backgroundManagerDialog.visible) {
+                    backgroundManagerDialog.close()
+                    console.log("Closed background manager dialog")
+                }
+                
+                // 只有在没有打开对话框的情况下，才执行窗口收纳操作
+                if (!hasOpenDialogs && !root.isDocked) {
+                    dockToRight()
+                    console.log("Docked window due to ESC (no dialogs open)")
+                }
+                
                 event.accepted = true
             }
         }
@@ -309,7 +325,7 @@ ApplicationWindow {
             if (mouse.button === Qt.RightButton) {
                 // 在收纳模式下完全禁用右键菜单
                 if (!root.isDocked) {
-                    contextMenu.popup()
+                    mainContextMenu.popup()
                 }
             } else if (mouse.button === Qt.LeftButton) {
                 // 在收纳模式下，点击窗口任意部位展开到全屏（排除穿透区域）
@@ -469,8 +485,8 @@ ApplicationWindow {
             anchors.fill: parent
             anchors.margins: -2
             color: "transparent"
-            border.color: "#4a9eff33"
-            border.width: 1.6
+            border.color: "transparent"
+            border.width: 0
             radius: 24
 
             // 外发光效果（柔光）
@@ -478,8 +494,8 @@ ApplicationWindow {
                 anchors.fill: parent
                 anchors.margins: -4
                 color: "transparent"
-                border.color: "#4a9eff10"
-                border.width: 1
+                border.color: "transparent"
+                border.width: 0
                 radius: 28
             }
         }
@@ -583,7 +599,7 @@ ApplicationWindow {
                             anchors.fill: parent
                             anchors.margins: 8
                             model: playlistModel
-                            spacing: 10
+                            spacing: 15
                             clip: true
                             delegate: Item {
                                 width: ListView.view.width
@@ -729,8 +745,8 @@ ApplicationWindow {
             z: 1000
             
             // 简化的定位逻辑 - 直接使用固定位置相对于音量按钮
-            x: playerCardLoader.x + playerCardLoader.width - 125  // 左移少许
-            y: playerCardLoader.y + playerCardLoader.height - 90  // 下移少许
+            x: playerCardLoader.x + playerCardLoader.width - 160 
+            y: playerCardLoader.y + playerCardLoader.height - 82
         }
                         
                         // 连接PlayerCard的音量按钮点击事件
@@ -936,6 +952,805 @@ ApplicationWindow {
             }
         }
 
+        // 批量添加背景图片对话框
+        FileDialog {
+            id: batchBackgroundImageDialog
+            title: "批量添加背景图片"
+            nameFilters: ["图片文件 (*.png *.jpg *.jpeg *.bmp *.gif)", "所有文件 (*.*)"]
+            fileMode: FileDialog.OpenFiles
+            onAccepted: {
+                var imagePaths = []
+                for (var i = 0; i < selectedFiles.length; i++) {
+                    var imagePath = selectedFiles[i].toString().replace("file:///", "")
+                    imagePaths.push(imagePath)
+                }
+                playerBackend.addBackgroundImages(imagePaths)
+            }
+        }
+
+        // 背景图片管理对话框
+        Dialog {
+            id: backgroundManagerDialog
+            width: 1000
+            height: 700
+            modal: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+            visible: !root.isDocked && visible
+            
+            // 透明背景层，用于点击隐藏右键菜单
+            MouseArea {
+                anchors.fill: parent
+                enabled: contextMenu.visible
+                onClicked: {
+                    contextMenu.visible = false
+                }
+            }
+            
+            // 浅色科技风格背景
+            Rectangle {
+                anchors.fill: parent
+                color: "#f8fafc"
+                radius: 20
+                
+                // 柔和渐变边框
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    color: "transparent"
+                    radius: 18
+                    border.width: 2
+                    border.color: "#e2e8f0"
+                    
+                    // 柔和发光效果
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        color: "transparent"
+                        radius: 22
+                        border.width: 1
+                        border.color: "#cbd5e144"
+                        
+                        // 外层光晕
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -6
+                            color: "transparent"
+                            radius: 26
+                            border.width: 1
+                            border.color: "#94a3b822"
+                        }
+                    }
+                }
+                
+                // 简约网格背景纹理
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    color: "transparent"
+                    clip: true
+                    
+                    // 简洁的网格背景
+                    Canvas {
+                        id: lightGridPattern
+                        anchors.fill: parent
+                        
+                        property int cellSize: 24
+                        property real lineWidth: 0.3
+                        property color lineColor: "#e2e8f033"
+                        
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.clearRect(0, 0, width, height)
+                            ctx.strokeStyle = lineColor
+                            ctx.lineWidth = lineWidth
+                            
+                            // 绘制垂直线
+                            for (var x = 0; x <= width; x += cellSize) {
+                                ctx.beginPath()
+                                ctx.moveTo(x, 0)
+                                ctx.lineTo(x, height)
+                                ctx.stroke()
+                            }
+                            
+                            // 绘制水平线
+                            for (var y = 0; y <= height; y += cellSize) {
+                                ctx.beginPath()
+                                ctx.moveTo(0, y)
+                                ctx.lineTo(width, y)
+                                ctx.stroke()
+                            }
+                        }
+                        
+                        onWidthChanged: requestPaint()
+                        onHeightChanged: requestPaint()
+                    }
+                }
+                
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 30
+                    spacing: 25
+                    
+                    // 简约科技风格标题栏
+                    Rectangle {
+                        width: parent.width
+                        height: 60
+                        color: "transparent"
+                        
+                        Row {
+                            anchors.fill: parent
+                            spacing: 20
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            // 标题区域
+                            Column {
+                                spacing: 5
+                                
+                                Text {
+                                    text: "背景图片管理"
+                                    font.pixelSize: 24
+                                    font.bold: true
+                                    color: "#1e293b"
+                                    font.family: "Segoe UI"
+                                    
+                                    // 简洁文字效果
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        colorization: 0.1
+                                        colorizationColor: "#64748b"
+                                        blur: 0.2
+                                        blurMax: 4
+                                    }
+                                }
+                                
+                                Rectangle {
+                                    width: 200
+                                    height: 3
+                                    color: "#cff3f3ff"
+                                    radius: 2
+                                    
+                                    // 柔和扫描线
+                                    Rectangle {
+                                        width: 40
+                                        height: 3
+                                        color: "#76e0e2ff"
+                                        radius: 2
+                                        
+                                        SequentialAnimation on x {
+                                            loops: Animation.Infinite
+                                            NumberAnimation { to: 160; duration: 2500; easing.type: Easing.InOutQuad }
+                                            NumberAnimation { to: 0; duration: 2500; easing.type: Easing.InOutQuad }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // 状态指示器
+                            Rectangle {
+                                width: 220
+                                height: 45
+                                color: "#f1f5f9"
+                                radius: 22
+                                border.color: "#cbd5e1"
+                                border.width: 2
+                                
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 15
+                                    
+                                    Rectangle {
+                                        width: 12
+                                        height: 12
+                                        color: playerBackend.backgroundImageList.length > 0 ? "#10b981" : "#ef4444"
+                                        radius: 6
+                                        
+                                        // 柔和脉冲动画
+                                        SequentialAnimation on scale {
+                                            loops: Animation.Infinite
+                                            NumberAnimation { to: 1.2; duration: 1200 }
+                                            NumberAnimation { to: 1.0; duration: 1200 }
+                                        }
+                                    }
+                                    
+                                    Text {
+                                        text: playerBackend.currentBackgroundIndex >= 0 ? 
+                                              (playerBackend.currentBackgroundIndex + 1) + "/" + playerBackend.backgroundImageList.length : 
+                                              "无背景"
+                                        color: "#475569"
+                                        font.pixelSize: 14
+                                        font.bold: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 简约科技风格缩略图网格区域
+                    Rectangle {
+                        width: parent.width
+                        height: 380
+                        color: "#ffffff"
+                        radius: 16
+                        border.color: "#e2e8f0"
+                        border.width: 2
+                        clip: true
+                        
+                        // 内部柔和边框
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            color: "transparent"
+                            radius: 13
+                            border.width: 1
+                            border.color: "#f1f5f9"
+                        }
+                        
+                        ScrollView {
+                            anchors.fill: parent
+                            anchors.margins: 20
+                            
+                            GridView {
+                                id: thumbnailGrid
+                                model: playerBackend.backgroundImageList
+                                cellWidth: 210  // 进一步缩小 (从220调整到210)
+                                cellHeight: 158 // 进一步缩小 (从165调整到158)
+                                
+                                delegate: Rectangle {
+                                    width: 210  // 进一步缩小 (从220调整到210)
+                                    height: 157 // 进一步缩小 (从164调整到157)
+                                    color: "transparent"
+                                    
+                                    // 简约科技风格卡片
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.margins: 6  // 进一步缩小 (从7.5调整到6)
+                                        color: index === playerBackend.currentBackgroundIndex ? "#f0f9ff" : "#ffffff"
+                                        radius: 12
+                                        border.color: index === playerBackend.currentBackgroundIndex ? "#0ea5e9" : "#e2e8f0"
+                                        border.width: index === playerBackend.currentBackgroundIndex ? 2 : 1
+                                        
+                                        // 柔和阴影效果
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            anchors.margins: -2
+                                            color: "transparent"
+                                            radius: 14
+                                            border.width: 1
+                                            border.color: index === playerBackend.currentBackgroundIndex ? "#0ea5e922" : "transparent"
+                                            visible: index === playerBackend.currentBackgroundIndex
+                                        }
+                                        
+                                        Column {
+                                            anchors.fill: parent
+                                            anchors.margins: 8   // 进一步缩小 (从10调整到8)
+                                            spacing: 14          // 进一步缩小 (从16.5调整到14)
+                                            
+                                            // 缩略图容器
+                                            Rectangle {
+                                                width: 176  // 进一步缩小 (从185调整到176)
+                                                height: 99  // 进一步缩小 (从104调整到99)
+                                                color: "#f8fafc"
+                                                radius: 6
+                                                border.color: "#e2e8f0"
+                                                border.width: 1
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                clip: true
+                                                
+                                                Image {
+                                                    anchors.fill: parent
+                                                    anchors.margins: 3
+                                                    source: "file:///" + modelData
+                                                    fillMode: Image.PreserveAspectCrop
+                                                    asynchronous: true
+                                                    cache: true
+                                                    
+                                                    // 优雅加载动画
+                                                    Rectangle {
+                                                        anchors.centerIn: parent
+                                                        width: 28
+                                                        height: 28
+                                                        color: "#e2e8f0"
+                                                        radius: 14
+                                                        visible: parent.status === Image.Loading
+                                                        
+                                                        // 旋转动画
+                                                        RotationAnimation on rotation {
+                                                            from: 0
+                                                            to: 360
+                                                            duration: 1800
+                                                            loops: Animation.Infinite
+                                                        }
+                                                        
+                                                        Text {
+                                                            anchors.centerIn: parent
+                                                            text: "⚡"
+                                                            color: "#94a3b8"
+                                                            font.pixelSize: 14
+                                                        }
+                                                    }
+                                                    
+                                                    // 错误状态
+                                                    Rectangle {
+                                                        anchors.fill: parent
+                                                        color: "#fef2f2"
+                                                        visible: parent.status === Image.Error
+                                                        
+                                                        Text {
+                                                            anchors.centerIn: parent
+                                                            text: "⚠️\n加载失败"
+                                                            color: "#ef4444"
+                                                            font.pixelSize: 12
+                                                            horizontalAlignment: Text.AlignHCenter
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                        // 鼠标交互区域
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            
+                                            onEntered: {
+                                                parent.scale = 1.03
+                                                parent.color = index === playerBackend.currentBackgroundIndex ? "#e0f2fe" : "#f8fafc"
+                                            }
+                                            
+                                            onExited: {
+                                                if (!contextMenu.visible) {
+                                                    parent.scale = 1.0
+                                                    parent.color = index === playerBackend.currentBackgroundIndex ? "#f0f9ff" : "#ffffff"
+                                                }
+                                            }
+                                            
+                                            onClicked: {
+                                                // 点击动画 - 使用parent作为动画目标
+                                                var clickAnim = Qt.createQmlObject('import QtQuick 2.15; SequentialAnimation { PropertyAnimation { target: parent; property: "scale"; to: 0.95; duration: 100 } PropertyAnimation { target: parent; property: "scale"; to: 1.0; duration: 100 } }', parent, "dynamicClickAnimation")
+                                                clickAnim.start()
+                                                clickAnim.destroy(1000)
+                                                playerBackend.setBackgroundByIndex(index)
+                                            }
+                                            
+                                            // 右键菜单
+                                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                            
+                                            onPressed: function(mouse) {
+                                                if (mouse.button === Qt.RightButton) {
+                                                    // 设置右键菜单的目标图片信息
+                                                    contextMenu.targetImagePath = modelData
+                                                    contextMenu.targetImageIndex = index
+                                                    
+                                                    // 计算右键菜单位置（在鼠标附近，但确保不超出屏幕边界）
+                                                    var globalPos = mapToItem(backgroundImageManagerDialog.contentItem, mouse.x, mouse.y)
+                                                    var menuX = globalPos.x - 100 // 菜单宽度的一半，让菜单中心对齐鼠标
+                                                    var menuY = globalPos.y - 60 // 菜单显示在鼠标上方
+                                                    
+                                                    // 确保菜单不超出对话框边界
+                                                    if (menuX < 10) menuX = 10
+                                                    if (menuX + 200 > backgroundImageManagerDialog.width - 10) menuX = backgroundImageManagerDialog.width - 210
+                                                    if (menuY < 10) menuY = 10
+                                                    if (menuY + 120 > backgroundImageManagerDialog.height - 10) menuY = globalPos.y + 10 // 如果上方空间不够，显示在下方
+                                                    
+                                                    // 设置菜单位置并显示
+                                                    contextMenu.parent = backgroundImageManagerDialog.contentItem
+                                                    contextMenu.x = menuX
+                                                    contextMenu.y = menuY
+                                                    contextMenu.visible = true
+                                                    
+                                                    // 保持缩略图高亮状态
+                                                    parent.scale = 1.03
+                                                    parent.color = index === playerBackend.currentBackgroundIndex ? "#e0f2fe" : "#f8fafc"
+                                                }
+                                            }
+                                        }
+                                        
+                                        // 当前背景指示器
+                                        Rectangle {
+                                            width: 20
+                                            height: 20
+                                            color: "#0ea5e9"
+                                            radius: 10
+                                            anchors.top: parent.top
+                                            anchors.right: parent.right
+                                            anchors.margins: 8
+                                            visible: index === playerBackend.currentBackgroundIndex
+                                            
+                                            // 柔和发光效果
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                anchors.margins: -2
+                                                color: "transparent"
+                                                radius: 12
+                                                border.width: 1
+                                                border.color: "#0ea5e944"
+                                            }
+                                            
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "✓"
+                                                color: "#ffffff"
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                            }
+                                            
+                                            // 柔和脉冲动画
+                                            SequentialAnimation on scale {
+                                                loops: Animation.Infinite
+                                                NumberAnimation { to: 1.15; duration: 1200 }
+                                                NumberAnimation { to: 1.0; duration: 1200 }
+                                            }
+                                        }
+                                        
+                                        Behavior on scale {
+                                            NumberAnimation { duration: 200; easing.type: Easing.OutBack }
+                                        }
+                                        
+                                        Behavior on color {
+                                            ColorAnimation { duration: 300 }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // 简约科技风格空状态
+                        Column {
+                            anchors.centerIn: parent
+                            visible: playerBackend.backgroundImageList.length === 0
+                            spacing: 20
+                            
+                            // 优雅动画图标
+                            Rectangle {
+                                width: 80
+                                height: 80
+                                color: "#f1f5f9"
+                                radius: 40
+                                border.color: "#e2e8f0"
+                                border.width: 2
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "🖼️"
+                                    color: "#94a3b8"
+                                    font.pixelSize: 40
+                                    
+                                    // 柔和浮动动画
+                                    SequentialAnimation on y {
+                                        loops: Animation.Infinite
+                                        NumberAnimation { to: -5; duration: 2500; easing.type: Easing.InOutQuad }
+                                        NumberAnimation { to: 5; duration: 2500; easing.type: Easing.InOutQuad }
+                                    }
+                                }
+                                
+                                // 旋转光环
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: -10
+                                    color: "transparent"
+                                    radius: 50
+                                    border.width: 1
+                                    border.color: "#e2e8f033"
+                                    
+                                    RotationAnimation on rotation {
+                                        from: 0
+                                        to: 360
+                                        duration: 12000
+                                        loops: Animation.Infinite
+                                    }
+                                }
+                            }
+                            
+                            Text {
+                                text: "还没有背景图片"
+                                color: "#475569"
+                                font.pixelSize: 18
+                                font.bold: true
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+                            
+                            Text {
+                                text: "点击下方按钮添加您喜欢的背景图片"
+                                color: "#94a3b8"
+                                font.pixelSize: 14
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+                        }
+                    }
+                    
+                    // 简约科技风格控制按钮区域
+                    Rectangle {
+                        width: parent.width
+                        height: 80
+                        color: "#f8fafc"
+                        radius: 16
+                        border.color: "#e2e8f0"
+                        border.width: 1
+                        
+                        // 内部柔和边框
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            color: "transparent"
+                            radius: 14
+                            border.width: 1
+                            border.color: "#f1f5f9"
+                        }
+                        
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.margins: 20
+                            spacing: 15
+                            
+                            // 添加背景图片按钮
+                            Rectangle {
+                                width: 160
+                                height: 45
+                                color: "#ffffff"
+                                radius: 22
+                                border.color: "#0ea5e9"
+                                border.width: 2
+                                
+                                // 柔和阴影效果
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: -3
+                                    color: "transparent"
+                                    radius: 25
+                                    border.width: 2
+                                    border.color: "#0ea5e922"
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    
+                                    onEntered: {
+                                        parent.color = "#f0f9ff"
+                                        parent.scale = 1.03
+                                    }
+                                    
+                                    onExited: {
+                                        parent.color = "#ffffff"
+                                        parent.scale = 1.0
+                                    }
+                                    
+                                    onPressed: {
+                                        parent.scale = 0.97
+                                    }
+                                    
+                                    onReleased: {
+                                        parent.scale = 1.03
+                                    }
+                                    
+                                    onClicked: {
+                                        batchBackgroundImageDialog.open()
+                                    }
+                                }
+                                
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 15
+                                    
+                                    Text {
+                                        text: "添加背景"
+                                        color: "#0ea5e9"
+                                        font.pixelSize: 14
+                                        font.bold: true
+                                    }
+                                }
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 200 }
+                                }
+                                
+                                Behavior on scale {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutBack }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 右键菜单 - 浅色调未来感设计
+        Rectangle {
+            id: contextMenu
+            width: 200
+            height: 120
+            visible: false
+            color: "#ffffff"
+            radius: 12
+            border.color: "#e2e8f0"
+            border.width: 1
+            z: 1000
+            
+            property string targetImagePath: ""
+            property int targetImageIndex: -1
+            property real menuX: 0
+            property real menuY: 0
+            
+            // 柔和阴影效果
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -2
+                color: "transparent"
+                radius: 14
+                border.width: 1
+                border.color: "#f1f5f9"
+            }
+            
+            // 悬浮阴影
+            MultiEffect {
+                anchors.fill: parent
+                source: contextMenu
+                shadowEnabled: true
+                shadowBlur: 0.8
+                shadowColor: "#10000000"
+                shadowVerticalOffset: 6
+                shadowHorizontalOffset: 0
+                visible: contextMenu.visible
+            }
+            
+            // 菜单标题
+            Rectangle {
+                id: menuHeader
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.topMargin: 1
+                anchors.leftMargin: 1
+                anchors.rightMargin: 1
+                height: 35
+                color: "#f8fafc"
+                radius: 11
+                border.color: "#e2e8f0"
+                border.width: 1
+                
+                Text {
+                    text: "🖼️ 图片操作"
+                    color: "#475569"
+                    font.pixelSize: 13
+                    font.bold: true
+                    anchors.centerIn: parent
+                }
+            }
+            
+            // 菜单项容器
+            Column {
+                anchors.top: menuHeader.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: 8
+                spacing: 4
+                
+                // 设为背景按钮
+                Rectangle {
+                    width: parent.width
+                    height: 32
+                    color: "#ffffff"
+                    radius: 8
+                    border.color: "#e2e8f0"
+                    border.width: 1
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        
+                        onEntered: {
+                            parent.color = "#f0f9ff"
+                            parent.border.color = "#0ea5e9"
+                        }
+                        
+                        onExited: {
+                            parent.color = "#ffffff"
+                            parent.border.color = "#e2e8f0"
+                        }
+                        
+                        onClicked: {
+                            playerBackend.setBackgroundByIndex(contextMenu.targetImageIndex)
+                            contextMenu.visible = false
+                        }
+                    }
+                    
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 8
+                        
+                        Text {
+                            text: "🎨"
+                            font.pixelSize: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        
+                        Text {
+                            text: "设为背景"
+                            color: "#0ea5e9"
+                            font.pixelSize: 13
+                            font.bold: true
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                    
+                    Behavior on border.color {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
+                
+                // 删除按钮
+                Rectangle {
+                    width: parent.width
+                    height: 32
+                    color: "#ffffff"
+                    radius: 8
+                    border.color: "#e2e8f0"
+                    border.width: 1
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        
+                        onEntered: {
+                            parent.color = "#fef2f2"
+                            parent.border.color = "#f87171"
+                        }
+                        
+                        onExited: {
+                            parent.color = "#ffffff"
+                            parent.border.color = "#e2e8f0"
+                        }
+                        
+                        onClicked: {
+                            playerBackend.removeBackgroundImage(contextMenu.targetImagePath)
+                            contextMenu.visible = false
+                        }
+                    }
+                    
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 8
+                        
+                        Text {
+                            text: "🗑️"
+                            font.pixelSize: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        
+                        Text {
+                            text: "删除图片"
+                            color: "#ef4444"
+                            font.pixelSize: 13
+                            font.bold: true
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                    
+                    Behavior on border.color {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
+            }
+            
+            Behavior on visible {
+                NumberAnimation { duration: 200 }
+            }
+            
+            Behavior on opacity {
+                NumberAnimation { duration: 150 }
+            }
+        }
+        
         // 键盘事件监听 - 用于显示隐藏的窗口
         Item {
             focus: true
@@ -957,7 +1772,8 @@ ApplicationWindow {
 
     // 右键菜单
     Menu {
-        id: contextMenu
+        id: mainContextMenu
+        visible: !root.isDocked && visible
 
         MenuItem {
             text: "📁 添加音乐文件夹..."
@@ -980,6 +1796,14 @@ ApplicationWindow {
         }
 
         MenuItem {
+            text: "   管理背景图片..."
+            visible: !root.isDocked
+            onTriggered: {
+                backgroundManagerDialog.open()
+            }
+        }
+
+        MenuItem {
             text: "   重置背景图片"
             visible: !root.isDocked
             enabled: playerBackend.backgroundImage !== ""
@@ -996,6 +1820,15 @@ ApplicationWindow {
             text: root.isDocked ? "   展开到全屏" : "   收纳到右侧"
             onTriggered: {
                 toggleDock()
+            }
+        }
+
+        MenuSeparator {}
+
+        MenuItem {
+            text: "   关闭应用"
+            onTriggered: {
+                Qt.quit()
             }
         }
     }

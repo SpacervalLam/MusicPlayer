@@ -1,9 +1,13 @@
 # Build directories
 build/
+build-debug/
+build-release/
 Debug/
 Release/
 RelWithDebInfo/
 MinSizeRel/
+
+MusicPlayer_Portable/
 
 # IDE files
 .vscode/
