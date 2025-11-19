@@ -250,7 +250,7 @@ Rectangle {
                         ctx.beginPath()
                         // 外圆弧：从 6 点 (π/2) → 9 点 (π)
                         ctx.arc(centerX, centerY, outerRadius, 
-                                Math.PI * 0.5,   // 6 点
+                                Math.PI * 0.4,   // 6 点
                                 Math.PI * 1.0)   // 9 点 (逆时针)
                         // 内圆弧：从 9 点 (π) → 6 点 (π/2) 逆向回去
                         ctx.arc(centerX, centerY, innerRadius, 
@@ -301,7 +301,7 @@ Rectangle {
                         // 外圆弧：9 点 (π) → 12 点 (3π/2)
                         ctx.arc(centerX, centerY, outerRadius, 
                                 Math.PI * 1.0,        // 9 点
-                                Math.PI * 1.5)        // 12 点 (逆时针到 3π/2)
+                                Math.PI * 1.6)        // 12 点 (逆时针到 3π/2)
                         // 内圆弧：12 点 → 9 点（逆时针）
                         ctx.arc(centerX, centerY, innerRadius, 
                                 Math.PI * 1.5, 
