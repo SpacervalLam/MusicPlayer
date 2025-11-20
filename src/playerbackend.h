@@ -79,7 +79,8 @@ public slots:
     void resetBackgroundImage();
     void addBackgroundImage(const QString &imagePath);
     void addBackgroundImages(const QStringList &imagePaths);
-    void removeBackgroundImage(const QString &imagePath);
+    void removeBackgroundImageByIndex(int index);
+
     void setBackgroundByIndex(int index);
     void setMusicFolder(const QString &folderPath);
     void saveSettings();

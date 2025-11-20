@@ -110,6 +110,10 @@ ApplicationWindow {
     property int dockedWidth: 120
     property int normalWidth: Screen.width
 
+    // 批量删除功能属性
+    property bool batchDeleteMode: false
+    property var selectedImages: []
+
     // 动画属性
     property real targetWidth: normalWidth
     property real targetX: 0
@@ -1023,12 +1027,18 @@ ApplicationWindow {
             closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
             visible: !root.isDocked && visible
             
-            // 透明背景层，用于点击隐藏右键菜单
+            // 透明背景层，用于点击隐藏右键菜单和退出批量选择模式
             MouseArea {
                 anchors.fill: parent
-                enabled: contextMenu.visible
+                enabled: contextMenu.visible || batchDeleteMode
                 onClicked: {
-                    contextMenu.visible = false
+                    if (contextMenu.visible) {
+                        contextMenu.visible = false
+                    } else if (batchDeleteMode) {
+                        // 退出批量选择模式
+                        batchDeleteMode = false
+                        selectedImages = []
+                    }
                 }
             }
             
@@ -1355,7 +1365,23 @@ ApplicationWindow {
                                                 var clickAnim = Qt.createQmlObject('import QtQuick 2.15; SequentialAnimation { PropertyAnimation { target: parent; property: "scale"; to: 0.95; duration: 100 } PropertyAnimation { target: parent; property: "scale"; to: 1.0; duration: 100 } }', parent, "dynamicClickAnimation")
                                                 clickAnim.start()
                                                 clickAnim.destroy(1000)
-                                                playerBackend.setBackgroundByIndex(index)
+                                                
+                                                if (batchDeleteMode) {
+                                                    // 批量删除模式：使用图片路径作为唯一标识，避免索引随删除变化
+                                                    var key = modelData  // 使用图片路径作为唯一标识，避免索引随删除变化
+                                                    var selectedIndex = selectedImages.indexOf(key)
+                                                    if (selectedIndex === -1) {
+                                                        // 不要 push 原数组（就地修改），而是创建新数组并赋值，触发 QML 绑定
+                                                        selectedImages = selectedImages.concat([key])
+                                                    } else {
+                                                        var newArr = selectedImages.slice()
+                                                        newArr.splice(selectedIndex, 1)
+                                                        selectedImages = newArr
+                                                    }
+                                                } else {
+                                                    // 普通模式：设置为背景
+                                                    playerBackend.setBackgroundByIndex(index)
+                                                }
                                             }
                                             
                                             // 右键菜单
@@ -1376,7 +1402,7 @@ ApplicationWindow {
                                                     if (menuX < 10) menuX = 10
                                                     if (menuX + 200 > backgroundImageManagerDialog.width - 10) menuX = backgroundImageManagerDialog.width - 210
                                                     if (menuY < 10) menuY = 10
-                                                    if (menuY + 120 > backgroundImageManagerDialog.height - 10) menuY = globalPos.y + 10 // 如果上方空间不够，显示在下方
+                                                    if (menuY + 75 > backgroundImageManagerDialog.height - 10) menuY = globalPos.y + 10 // 如果上方空间不够，显示在下方
                                                     
                                                     // 设置菜单位置并显示
                                                     contextMenu.parent = backgroundImageManagerDialog.contentItem
@@ -1425,6 +1451,59 @@ ApplicationWindow {
                                                 loops: Animation.Infinite
                                                 NumberAnimation { to: 1.15; duration: 1200 }
                                                 NumberAnimation { to: 1.0; duration: 1200 }
+                                            }
+                                        }
+                                        
+                                        // 批量选择指示器
+                                        Rectangle {
+                                            id: batchSelector
+                                            width: 24
+                                            height: 24
+                                            color: isItemSelected ? "#ef4444" : "#f1f5f9"
+                                            radius: 12
+                                            anchors.top: parent.top
+                                            anchors.left: parent.left
+                                            anchors.margins: 8
+                                            visible: batchDeleteMode
+                                            
+                                            property bool isItemSelected: selectedImages.indexOf(modelData) !== -1
+                                            
+                                            border.color: isItemSelected ? "#dc2626" : "#cbd5e1"
+                                            border.width: 2
+                                            
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: batchSelector.isItemSelected ? "✓" : ""
+                                                color: "#ffffff"
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                            }
+                                            
+                                            // 选中状态动画
+                                            Behavior on color {
+                                                ColorAnimation { duration: 200 }
+                                            }
+                                            
+                                            Behavior on scale {
+                                                NumberAnimation { duration: 200; easing.type: Easing.OutBack }
+                                            }
+                                            
+                                            // 悬停效果
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                onEntered: {
+                                                    if (!batchSelector.isItemSelected) {
+                                                        parent.scale = 1.1
+                                                        parent.color = "#e2e8f0"
+                                                    }
+                                                }
+                                                onExited: {
+                                                    if (!batchSelector.isItemSelected) {
+                                                        parent.scale = 1.0
+                                                        parent.color = "#f1f5f9"
+                                                    }
+                                                }
                                             }
                                         }
                                         
@@ -1595,6 +1674,80 @@ ApplicationWindow {
                                     NumberAnimation { duration: 200; easing.type: Easing.OutBack }
                                 }
                             }
+                            
+                            // 批量删除按钮
+                            Rectangle {
+                                width: 160
+                                height: 45
+                                color: batchDeleteMode ? "#fee2e2" : "#ffffff"
+                                radius: 22
+                                border.color: "#ef4444"
+                                border.width: 2
+                                
+                                // 柔和阴影效果
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: -3
+                                    color: "transparent"
+                                    radius: 25
+                                    border.width: 2
+                                    border.color: "#ef444422"
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    
+                                    onEntered: {
+                                        parent.color = batchDeleteMode ? "#fecaca" : "#fef2f2"
+                                        parent.scale = 1.03
+                                    }
+                                    
+                                    onExited: {
+                                        parent.color = batchDeleteMode ? "#fee2e2" : "#ffffff"
+                                        parent.scale = 1.0
+                                    }
+                                    
+                                    onPressed: {
+                                        parent.scale = 0.97
+                                    }
+                                    
+                                    onReleased: {
+                                        parent.scale = 1.03
+                                    }
+                                    
+                                    onClicked: {
+                                            if (batchDeleteMode) {
+                                                // 执行批量删除
+                                                performBatchDelete()
+                                            } else {
+                                                // 进入批量选择模式：重新赋空数组以触发绑定
+                                                batchDeleteMode = true
+                                                selectedImages = []
+                                            }
+                                        }
+                                }
+                                
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 15
+                                    
+                                    Text {
+                                        text: batchDeleteMode ? "确认删除" : "批量删除"
+                                        color: "#ef4444"
+                                        font.pixelSize: 14
+                                        font.bold: true
+                                    }
+                                }
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 200 }
+                                }
+                                
+                                Behavior on scale {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutBack }
+                                }
+                            }
                         }
                     }
                 }
@@ -1605,7 +1758,7 @@ ApplicationWindow {
         Rectangle {
             id: contextMenu
             width: 200
-            height: 120
+            height: 75
             visible: false
             color: "#ffffff"
             radius: 12
@@ -1729,63 +1882,6 @@ ApplicationWindow {
                         ColorAnimation { duration: 150 }
                     }
                 }
-                
-                // 删除按钮
-                Rectangle {
-                    width: parent.width
-                    height: 32
-                    color: "#ffffff"
-                    radius: 8
-                    border.color: "#e2e8f0"
-                    border.width: 1
-                    
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        
-                        onEntered: {
-                            parent.color = "#fef2f2"
-                            parent.border.color = "#f87171"
-                        }
-                        
-                        onExited: {
-                            parent.color = "#ffffff"
-                            parent.border.color = "#e2e8f0"
-                        }
-                        
-                        onClicked: {
-                            playerBackend.removeBackgroundImage(contextMenu.targetImagePath)
-                            contextMenu.visible = false
-                        }
-                    }
-                    
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 8
-                        
-                        Text {
-                            text: "🗑️"
-                            font.pixelSize: 14
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        
-                        Text {
-                            text: "删除图片"
-                            color: "#ef4444"
-                            font.pixelSize: 13
-                            font.bold: true
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-                    
-                    Behavior on color {
-                        ColorAnimation { duration: 150 }
-                    }
-                    
-                    Behavior on border.color {
-                        ColorAnimation { duration: 150 }
-                    }
-                }
             }
             
             Behavior on visible {
@@ -1806,6 +1902,32 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    // 执行批量删除函数
+    function performBatchDelete() {
+        if (!selectedImages || selectedImages.length === 0) {
+            batchDeleteMode = false
+            return
+        }
+        
+        // 将选中的路径转换为当前 model 的索引（可能有未找到的项，忽略之）
+        var indicesToDelete = []
+        for (var i = 0; i < selectedImages.length; i++) {
+            var idx = playerBackend.backgroundImageList.indexOf(selectedImages[i])
+            if (idx !== -1) indicesToDelete.push(idx)
+        }
+        
+        // 从大到小删除以避免索引错位
+        indicesToDelete.sort(function(a,b){ return b - a })
+        
+        for (var j = 0; j < indicesToDelete.length; j++) {
+            playerBackend.removeBackgroundImageByIndex(indicesToDelete[j])
+        }
+        
+        // 清空并退出批量模式（重新赋空数组以触发绑定）
+        selectedImages = []
+        batchDeleteMode = false
     }
 
     // 连接PlayerBackend的音乐文件夹需求信号

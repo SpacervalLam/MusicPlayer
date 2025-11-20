@@ -676,33 +676,7 @@ void PlayerBackend::addBackgroundImages(const QStringList &imagePaths)
     }
 }
 
-void PlayerBackend::removeBackgroundImage(const QString &imagePath)
-{
-    int index = m_backgroundImageList.indexOf(imagePath);
-    if (index >= 0) {
-        m_backgroundImageList.removeAt(index);
-        emit backgroundImageListChanged();
-        
-        // 如果删除的是当前使用的背景图片
-        if (imagePath == m_backgroundImage) {
-            if (m_backgroundImageList.isEmpty()) {
-                resetBackgroundImage();
-                m_currentBackgroundIndex = -1;
-            } else {
-                // 切换到下一张图片
-                int newIndex = qMin(index, m_backgroundImageList.size() - 1);
-                setBackgroundByIndex(newIndex);
-            }
-            emit currentBackgroundIndexChanged();
-        } else if (index < m_currentBackgroundIndex) {
-            // 更新当前索引
-            m_currentBackgroundIndex--;
-            emit currentBackgroundIndexChanged();
-        }
-        
-        saveSettings();
-    }
-}
+
 
 void PlayerBackend::setBackgroundByIndex(int index)
 {
@@ -711,6 +685,36 @@ void PlayerBackend::setBackgroundByIndex(int index)
         m_currentBackgroundIndex = index;
         emit currentBackgroundIndexChanged();
     }
+}
+
+void PlayerBackend::removeBackgroundImageByIndex(int index)
+{
+    if (index < 0 || index >= m_backgroundImageList.size()) {
+        return;
+    }
+    
+    // 移除指定索引的图片
+    m_backgroundImageList.removeAt(index);
+    
+    // 如果移除的是当前背景图片
+    if (index == m_currentBackgroundIndex) {
+        if (m_backgroundImageList.isEmpty()) {
+            // 没有更多图片，重置背景
+            resetBackgroundImage();
+            m_currentBackgroundIndex = -1;
+        } else {
+            // 设置为下一张图片（或最后一张如果移除的是最后一张）
+            int newIndex = qMin(index, m_backgroundImageList.size() - 1);
+            setBackgroundByIndex(newIndex);
+        }
+    } else if (index < m_currentBackgroundIndex) {
+        // 如果移除的图片在当前背景之前，需要调整当前背景索引
+        m_currentBackgroundIndex--;
+        emit currentBackgroundIndexChanged();
+    }
+    
+    emit backgroundImageListChanged();
+    saveSettings();
 }
 
 #include "playerbackend.moc"
