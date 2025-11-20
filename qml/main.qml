@@ -46,15 +46,15 @@ ApplicationWindow {
                 fillMode: Image.PreserveAspectCrop
                 opacity: root.isDocked ? 0.45 : 1.0
                 
-                // 添加暗色遮罩以确保UI可见性
+                // 添加暗色遮罩以确保UI可见性 - 使用纯中性黑避免色彩偏移
                 Rectangle {
                     anchors.fill: parent
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#00000088" }
-                        GradientStop { position: 0.6; color: "#00000066" }
-                        GradientStop { position: 1.0; color: "#00000044" }
+                        GradientStop { position: 0.0; color: "#00000066" }
+                        GradientStop { position: 0.6; color: "#00000044" }
+                        GradientStop { position: 1.0; color: "#00000022" }
                     }
-                    opacity: 0.9
+                    opacity: 0.6  // 降低透明度，减少色彩污染
                 }
             }
         }
@@ -70,15 +70,15 @@ ApplicationWindow {
                 playing: true  // 自动播放
                 paused: false  // 不暂停
                 
-                // 添加暗色遮罩以确保UI可见性
+                // 添加暗色遮罩以确保UI可见性 - 使用纯中性黑避免色彩偏移
                 Rectangle {
                     anchors.fill: parent
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#00000088" }
-                        GradientStop { position: 0.6; color: "#00000066" }
-                        GradientStop { position: 1.0; color: "#00000044" }
+                        GradientStop { position: 0.0; color: "#00000066" }
+                        GradientStop { position: 0.6; color: "#00000044" }
+                        GradientStop { position: 1.0; color: "#00000022" }
                     }
-                    opacity: 0.9
+                    opacity: 0.6  // 降低透明度，减少色彩污染
                 }
             }
         }
@@ -661,9 +661,9 @@ ApplicationWindow {
 
                                     Rectangle {
                                         anchors.fill: parent
-                                        color: parent.containsMouse ? "#4a9eff10" : "transparent"
+                                        color: parent.containsMouse ? "#4a9eff20" : "transparent"
                                         radius: 12
-                                        border.color: parent.containsMouse ? "#4a9eff22" : "transparent"
+                                        border.color: parent.containsMouse ? "#4a9eff40" : "transparent"
                                         border.width: parent.containsMouse ? 1 : 0
 
                                         Behavior on color {
@@ -1248,18 +1248,18 @@ ApplicationWindow {
                             GridView {
                                 id: thumbnailGrid
                                 model: playerBackend.backgroundImageList
-                                cellWidth: 210  // 进一步缩小 (从220调整到210)
-                                cellHeight: 158 // 进一步缩小 (从165调整到158)
+                                cellWidth: 210  
+                                cellHeight: 158 
                                 
                                 delegate: Rectangle {
-                                    width: 210  // 进一步缩小 (从220调整到210)
-                                    height: 157 // 进一步缩小 (从164调整到157)
+                                    width: 210
+                                    height: 157
                                     color: "transparent"
                                     
                                     // 简约科技风格卡片
                                     Rectangle {
                                         anchors.fill: parent
-                                        anchors.margins: 6  // 进一步缩小 (从7.5调整到6)
+                                        anchors.margins: 6 
                                         color: index === playerBackend.currentBackgroundIndex ? "#f0f9ff" : "#ffffff"
                                         radius: 12
                                         border.color: index === playerBackend.currentBackgroundIndex ? "#0ea5e9" : "#e2e8f0"
@@ -1278,8 +1278,8 @@ ApplicationWindow {
                                         
                                         Column {
                                             anchors.fill: parent
-                                            anchors.margins: 8   // 进一步缩小 (从10调整到8)
-                                            spacing: 14          // 进一步缩小 (从16.5调整到14)
+                                            anchors.margins: 8   
+                                            spacing: 14  
                                             
                                             // 缩略图容器
                                             Rectangle {
@@ -1371,7 +1371,6 @@ ApplicationWindow {
                                                     var key = modelData  // 使用图片路径作为唯一标识，避免索引随删除变化
                                                     var selectedIndex = selectedImages.indexOf(key)
                                                     if (selectedIndex === -1) {
-                                                        // 不要 push 原数组（就地修改），而是创建新数组并赋值，触发 QML 绑定
                                                         selectedImages = selectedImages.concat([key])
                                                     } else {
                                                         var newArr = selectedImages.slice()
@@ -1518,13 +1517,11 @@ ApplicationWindow {
                                 }
                             }
                         }
-                        // 简约科技风格空状态
                         Column {
                             anchors.centerIn: parent
                             visible: playerBackend.backgroundImageList.length === 0
                             spacing: 20
                             
-                            // 优雅动画图标
                             Rectangle {
                                 width: 80
                                 height: 80
@@ -1684,15 +1681,7 @@ ApplicationWindow {
                                 border.color: "#ef4444"
                                 border.width: 2
                                 
-                                // 柔和阴影效果
-                                Rectangle {
-                                    anchors.fill: parent
-                                    anchors.margins: -3
-                                    color: "transparent"
-                                    radius: 25
-                                    border.width: 2
-                                    border.color: "#ef444422"
-                                }
+                                // 移除外层黑色边框，只保留内层红色边框
                                 
                                 MouseArea {
                                     anchors.fill: parent

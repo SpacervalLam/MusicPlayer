@@ -346,7 +346,7 @@ Rectangle {
                 color: "transparent"
                 border.color: "#55FFFFFF"
                 border.width: 2
-                z: 5
+                z: 100  // 确保在最顶层，高于扇形按钮和展开区域
                 
                 // 添加缩放动画
                 Behavior on scale {
@@ -357,7 +357,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
-                    z: 10
+                    z: 200  // 确保在所有其他元素之上
                     
                     onEntered: {
                         parent.scale = 1.05  // 悬停时轻微放大

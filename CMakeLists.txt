@@ -65,7 +65,6 @@ qt_add_qml_module(app
         qml/main.qml
         qml/PlayerCard.qml
         qml/PlayerCardMini.qml
-        qml/PlaylistPanel.qml
         qml/components/RoundButton.qml
         qml/components/Visualizer.qml
         qml/components/VolumeSlider.qml
