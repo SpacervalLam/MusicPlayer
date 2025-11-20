@@ -114,6 +114,10 @@ ApplicationWindow {
     property bool batchDeleteMode: false
     property var selectedImages: []
 
+    // 搜索功能属性
+    property bool searchMode: false
+    property string searchText: ""
+
     // 动画属性
     property real targetWidth: normalWidth
     property real targetX: 0
@@ -339,14 +343,34 @@ ApplicationWindow {
                 }
                 
                 event.accepted = true
+            } else if (event.key === Qt.Key_Space) {
+                // 空格键播放/暂停
+                playerBackend.togglePlay()
+                console.log("Space key pressed - toggle play/pause")
+                event.accepted = true
+            } else if (event.key === Qt.Key_Z && (event.modifiers & Qt.ControlModifier)) {
+                // Ctrl+Z 上一首
+                playerBackend.previous()
+                console.log("Ctrl+Z pressed - previous track")
+                event.accepted = true
+            } else if (event.key === Qt.Key_X && (event.modifiers & Qt.ControlModifier)) {
+                // Ctrl+X 下一首
+                playerBackend.next()
+                console.log("Ctrl+X pressed - next track")
+                event.accepted = true
+            } else if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
+                // Ctrl+F 切换搜索模式
+                root.searchMode = !root.searchMode
+                if (root.searchMode) {
+                    console.log("Ctrl+F pressed - search mode enabled")
+                } else {
+                    console.log("Ctrl+F pressed - search mode disabled")
+                }
+                event.accepted = true
             }
         }
 
-        Keys.onReleased: {
-            if (event.key === Qt.Key_F2) {
-                if (root.isHidden) showDockFromEdge(); else expandToFullScreen();
-            }
-        }
+
 
         onPositionChanged: {
             // 在收纳模式下，检查鼠标是否在最右侧18像素的穿透区域
@@ -551,6 +575,192 @@ ApplicationWindow {
         }
     }
 
+    // 搜索框 - 相对于Playlist标题定位，不影响其他UI布局
+    Rectangle {
+        id: searchBox
+        width: 400
+        height: 36
+        radius: 18
+        visible: root.searchMode
+        color: "transparent"
+        border.color: "#4a9eff70"
+        border.width: 1
+        clip: true
+        z: 10  // 确保在背景层之上
+        
+        // 使用绝对定位确保移动生效
+        x: playlistTitleRow.x + playlistTitleRow.width + 60 
+        y: playlistTitleRow.y + 87   
+        
+        // 玻璃拟态背景层（不引用自身，避免循环崩溃）
+        Rectangle {
+            anchors.fill: parent
+            radius: 18
+            color: "#1AFFFFFF"
+        }
+        
+        // 模糊层（使用父级作为源，不会循环）
+        MultiEffect {
+            anchors.fill: parent
+            source: backgroundLayer   // <<< 🔥 关键：引用整个背景，不引用自己
+            blurEnabled: true
+            blur: 36
+            blurMax: 64
+            brightness: 0.1
+            saturation: 1.2
+        }
+        
+        // 阻止点击事件冒泡到背景层，但优先处理窗口隐藏功能
+        MouseArea {
+            anchors.fill: parent
+            onClicked: function(mouse) {
+                // 计算点击位置相对于窗口的全局坐标
+                var globalClickX = root.x + searchBox.x + mouse.x
+                
+                // 如果点击位置在窗口右侧120px区域内，不拦截事件，让主窗口处理隐藏功能
+                if (globalClickX >= root.x + root.width - 120) {
+                    console.log("Search box clicked in right 120px area - allowing event to propagate")
+                    mouse.accepted = false  // 不接受事件，让其传播到主窗口
+                    return
+                }
+                
+                // 其他情况正常拦截事件
+                mouse.accepted = true
+            }
+        }
+        
+        Behavior on opacity {
+            NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+        }
+        
+        Behavior on visible {
+            PropertyAnimation { duration: 240 }
+        }
+        
+        // 左侧图标
+        Image {
+            anchors.left: parent.left
+            anchors.leftMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            width: 16
+            height: 16
+            source: "qrc:/qml/icons/search_white.svg"
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            antialiasing: true
+            opacity: 0.9
+        }
+        
+        // 搜索输入框
+        TextInput {
+            id: searchInput
+            anchors.left: parent.left
+            anchors.leftMargin: 34
+            anchors.right: parent.right
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            
+            color: "#ffffff"
+            font.pixelSize: 14
+            font.family: "Segoe UI, sans-serif"
+            selectionColor: "#4a9eff60"
+            
+            // 占位符文本
+            Text {
+                text: "搜索..."
+                visible: !searchInput.text && !searchInput.activeFocus
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.leftMargin: 2
+                color: "#cfeafd88"
+                font.pixelSize: 14
+            }
+            
+            // 处理键盘事件，让快捷键传递给主窗口
+            Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Space) {
+                    // 空格键播放/暂停
+                    playerBackend.togglePlay()
+                    console.log("Space key pressed in search - toggle play/pause")
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Z && (event.modifiers & Qt.ControlModifier)) {
+                    // Ctrl+Z 上一首
+                    playerBackend.previous()
+                    console.log("Ctrl+Z pressed in search - previous track")
+                    event.accepted = true
+                } else if (event.key === Qt.Key_X && (event.modifiers & Qt.ControlModifier)) {
+                    // Ctrl+X 下一首
+                    playerBackend.next()
+                    console.log("Ctrl+X pressed in search - next track")
+                    event.accepted = true
+                } else if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
+                    // Ctrl+F 切换搜索模式
+                    root.searchMode = !root.searchMode
+                    if (root.searchMode) {
+                        console.log("Ctrl+F pressed in search - search mode enabled")
+                    } else {
+                        console.log("Ctrl+F pressed in search - search mode disabled")
+                    }
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Escape) {
+                    // ESC键关闭搜索
+                    root.searchMode = false
+                    console.log("ESC pressed in search - close search")
+                    event.accepted = true
+                }
+            }
+            
+            // 添加鼠标点击事件处理，优先处理窗口隐藏功能
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                onClicked: function(mouse) {
+                    // 计算点击位置相对于窗口的全局坐标
+                    var globalClickX = root.x + searchBox.x + searchInput.x + mouse.x
+                    
+                    // 如果点击位置在窗口右侧120px区域内，触发窗口隐藏功能
+                    if (globalClickX >= root.x + root.width - 120) {
+                        console.log("Search input clicked in right 120px area - triggering window hide")
+                        if (!root.isDocked) {
+                            root.dockToRight()
+                        }
+                        return
+                    }
+                    
+                    // 其他情况让输入框正常处理点击事件
+                    mouse.accepted = false
+                }
+            }
+            
+            // 实时搜索
+            onTextChanged: {
+                root.searchText = text
+                console.log("Search text changed:", text)
+            }
+            
+            // 获得焦点
+            Component.onCompleted: {
+                if (root.searchMode) {
+                    forceActiveFocus()
+                }
+            }
+            
+            // 监听搜索模式变化
+            Connections {
+                target: root
+                function onSearchModeChanged() {
+                    if (root.searchMode) {
+                        searchInput.forceActiveFocus()
+                        searchInput.selectAll()
+                    } else {
+                        searchInput.text = ""
+                        root.searchText = ""
+                    }
+                }
+            }
+        }
+    }
+
     // 主内容区域
     Rectangle {
         id: mainContent
@@ -559,6 +769,16 @@ ApplicationWindow {
         color: "transparent"
         radius: 22
         clip: true
+
+        // 点击外部区域关闭搜索框
+        MouseArea {
+            anchors.fill: parent
+            visible: root.searchMode
+            onClicked: {
+                root.searchMode = false
+                console.log("Clicked outside - search mode disabled")
+            }
+        }
 
         // 视觉：给主容器添加轻微内阴影模拟凹面（使用半透明渐变）
         Rectangle {
@@ -618,14 +838,34 @@ ApplicationWindow {
 
                     Column {
                         spacing: 6
-                        Text {
-                            text: "Playlist";
-                            font.pixelSize: 20;
-                            color: "#eaf6ff";
-                            opacity: 0.95;
-                            font.family: "Segoe UI, sans-serif"
-                            font.weight: Font.DemiBold
+                        
+                        // Playlist标题
+                        Row {
+                            id: playlistTitleRow
+                            spacing: 12
+                            
+                            // Playlist标题
+                            Text {
+                                text: "Playlist";
+                                font.pixelSize: 20;
+                                color: "#eaf6ff";
+                                opacity: 0.95;
+                                font.family: "Segoe UI, sans-serif"
+                                font.weight: Font.DemiBold
+                                anchors.verticalCenter: parent.verticalCenter
+                                
+                                // 添加点击事件触发搜索
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        root.searchMode = !root.searchMode
+                                        console.log("Playlist text clicked - search mode:", root.searchMode)
+                                    }
+                                }
+                            }
                         }
+                        
                         Rectangle {
                             width: 56
                             height: 3
@@ -648,15 +888,118 @@ ApplicationWindow {
                             id: playlistView
                             anchors.fill: parent
                             anchors.margins: 8
-                            model: playlistModel
+                            model: root.searchMode ? filteredListModel : playlistModel
                             spacing: 15
                             clip: true
+                            
+                            // 过滤后的模型 - 使用ListModel而不是JS数组
+                            ListModel { id: filteredListModel }
+                            
+                            // 更新过滤模型的函数
+                            function updateFilteredModel() {
+                                filteredListModel.clear()
+
+                                var search = root.searchText ? root.searchText.trim().toLowerCase() : ""
+                                if (search === "") {
+                                    // 空搜索时显示完整列表
+                                    console.log("filter: empty search, showing full list")
+                                    for (var i = 0; i < playlistModel.rowCount(); i++) {
+                                        var index = playlistModel.index(i, 0)
+                                        var titleData = playlistModel.data(index, 259) // TitleRole
+                                        var artistData = playlistModel.data(index, 260) // ArtistRole
+                                        var nameData = playlistModel.data(index, 258) // NameRole
+                                        var albumData = playlistModel.data(index, 261) // AlbumRole
+                                        var durationData = playlistModel.data(index, 262) // DurationRole
+                                        var pathData = playlistModel.data(index, 263) // UrlRole
+                                        
+                                        filteredListModel.append({ 
+                                            "title": titleData || nameData || "", 
+                                            "artist": artistData || "", 
+                                            "name": nameData || "", 
+                                            "album": albumData || "", 
+                                            "duration": durationData || 0, 
+                                            "path": pathData || "", 
+                                            "originalIndex": i 
+                                        })
+                                    }
+                                    console.log("filter: full list contains", filteredListModel.count, "items")
+                                    return
+                                }
+
+                                for (var i = 0; i < playlistModel.rowCount(); i++) {
+                                    var index = playlistModel.index(i, 0)
+                                    var titleData = playlistModel.data(index, 259) // TitleRole
+                                    var artistData = playlistModel.data(index, 260) // ArtistRole
+                                    var nameData = playlistModel.data(index, 258) // NameRole
+                                    var albumData = playlistModel.data(index, 261) // AlbumRole
+                                    var durationData = playlistModel.data(index, 262) // DurationRole
+                                    var pathData = playlistModel.data(index, 263) // UrlRole
+                                    
+                                    var title = (titleData || nameData || "").toString().toLowerCase()
+                                    var artist = (artistData || "").toString().toLowerCase()
+
+                                    if (title.indexOf(search) !== -1 || artist.indexOf(search) !== -1) {
+                                        // append 到 filteredListModel，并保存 originalIndex 以便播放时映射回原 model
+                                        filteredListModel.append({ 
+                                            "title": titleData || nameData || "", 
+                                            "artist": artistData || "", 
+                                            "name": nameData || "", 
+                                            "album": albumData || "", 
+                                            "duration": durationData || 0, 
+                                            "path": pathData || "", 
+                                            "originalIndex": i 
+                                        })
+                                    }
+                                }
+                                console.log("filter: found", filteredListModel.count, "items")
+                            }
+                            
+                            // 监听搜索文本变化
+                            Connections {
+                                target: root
+                                function onSearchTextChanged() {
+                                    playlistView.updateFilteredModel()
+                                }
+                            }
+                            
                             delegate: Item {
                                 width: ListView.view.width
                                 height: 72
+
+                                // 中间属性：简化数据访问逻辑
+                                property string itemTitle: model.title || model.name || "Unknown Title"
+                                property string itemArtist: model.artist || "Unknown Artist"
+                                property string itemAlbum: model.album || ""
+                                property int itemDuration: model.duration || 0
+                                property int itemOriginalIndex: root.searchMode ? (model.originalIndex || -1) : index
+                                
+                                // 函数：生成高亮文本
+                                function highlightText(text, searchText) {
+                                    if (!searchText || searchText === "") {
+                                        return text;
+                                    }
+                                    
+                                    var searchLower = searchText.toLowerCase();
+                                    var textLower = text.toLowerCase();
+                                    var index = textLower.indexOf(searchLower);
+                                    
+                                    if (index === -1) {
+                                        return text;
+                                    }
+                                    
+                                    var beforeMatch = text.substring(0, index);
+                                    var matchText = text.substring(index, index + searchText.length);
+                                    var afterMatch = text.substring(index + searchText.length);
+                                    
+                                    return beforeMatch + '<font color="#4a9eff"><b>' + matchText + '</b></font>' + afterMatch;
+                                }
+                                
                                 MouseArea {
                                     anchors.fill: parent
-                                    onClicked: playerBackend.playIndex(index)
+                                    onClicked: {
+                                        var playIndex = root.searchMode ? itemOriginalIndex : index
+                                        playerBackend.playIndex(playIndex)
+                                    }
                                     hoverEnabled: true
 
                                     Rectangle {
@@ -675,7 +1018,10 @@ ApplicationWindow {
 
                                         // 播放指示器（更精细）
                                         Rectangle {
-                                            visible: playerBackend.currentIndex === index
+                                            visible: {
+                                                var currentIndex = root.searchMode ? itemOriginalIndex : index
+                                                return playerBackend.currentIndex === currentIndex
+                                            }
                                             anchors.left: parent.left
                                             anchors.verticalCenter: parent.verticalCenter
                                             width: 5
@@ -703,7 +1049,7 @@ ApplicationWindow {
                                     anchors.rightMargin: 18
                                     spacing: 14
 
-                                    // 序号（现代化风格）
+                                    // 序号（现代化风格）- 显示过滤后的位置
                                     Text {
                                         text: index + 1;
                                         color: "#e8f8ff";
@@ -720,21 +1066,23 @@ ApplicationWindow {
                                         spacing: 2
                                         width: parent.width - 40 - parent.spacing
                                         Text {
-                                            text: model.title || model.name || "Unknown Title";
+                                            text: highlightText(itemTitle, root.searchText);
                                             color: "#ffffff";
                                             font.pixelSize: 16;
                                             elide: Text.ElideRight;
                                             font.family: "SF Pro Display, Segoe UI, system-ui, sans-serif"
                                             font.weight: Font.DemiBold
                                             width: parent.width
+                                            textFormat: Text.RichText
                                         }
                                         Text {
-                                            text: model.artist || "Unknown Artist";
+                                            text: highlightText(itemArtist, root.searchText);
                                             color: "#cfeffd";
                                             font.pixelSize: 12;
                                             opacity: 0.75;
                                             font.family: "Segoe UI, sans-serif"
                                             font.weight: Font.Light
+                                            textFormat: Text.RichText
                                         }
                                     }
                                 }
@@ -1882,15 +2230,7 @@ ApplicationWindow {
             }
         }
         
-        // 键盘事件监听 - 用于显示隐藏的窗口
-        Item {
-            focus: true
-            Keys.onPressed: {
-                if (event.key === Qt.Key_F2 && root.isHidden) {
-                    showDockFromEdge()
-                }
-            }
-        }
+
     }
 
     // 执行批量删除函数
