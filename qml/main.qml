@@ -367,6 +367,73 @@ ApplicationWindow {
                     console.log("Ctrl+F pressed - search mode disabled")
                 }
                 event.accepted = true
+            } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
+                // 全局↑/↓键导航 - 支持连续移动
+                if (playlistModel.rowCount() > 0) {
+                    var currentListIndex = playlistView.currentIndex
+                    var targetListIndex = -1
+                    var targetBackendIndex = -1
+                    
+                    // 如果当前没有选中项，从当前播放歌曲开始
+                    if (currentListIndex < 0) {
+                        currentListIndex = playerBackend.currentIndex
+                        // 在搜索模式下需要找到当前播放歌曲在过滤列表中的位置
+                        if (root.searchMode) {
+                            for (var i = 0; i < filteredListModel.count; i++) {
+                                if (filteredListModel.get(i).originalIndex === currentListIndex) {
+                                    currentListIndex = i
+                                    break
+                                }
+                            }
+                        }
+                        playlistView.currentIndex = currentListIndex
+                    }
+                    
+                    if (event.key === Qt.Key_Up) {
+                        // ↑键：选择当前选中项的上一项
+                        if (currentListIndex > 0) {
+                            targetListIndex = currentListIndex - 1
+                        } else if (currentListIndex === 0) {
+                            // 如果已经在第一项，循环到最后一项
+                            targetListIndex = (root.searchMode ? filteredListModel.count : playlistModel.rowCount()) - 1
+                        }
+                    } else if (event.key === Qt.Key_Down) {
+                        // ↓键：选择当前选中项的下一项
+                        var maxCount = root.searchMode ? filteredListModel.count : playlistModel.rowCount()
+                        if (currentListIndex < maxCount - 1) {
+                            targetListIndex = currentListIndex + 1
+                        } else if (currentListIndex === maxCount - 1) {
+                            // 如果已经在最后一项，循环到第一项
+                            targetListIndex = 0
+                        }
+                    }
+                    
+                    if (targetListIndex >= 0) {
+                        playlistView.currentIndex = targetListIndex
+                        playlistView.positionViewAtIndex(targetListIndex, ListView.Contain)
+                        
+                        // 获取对应的backend索引用于日志
+                        if (root.searchMode) {
+                            targetBackendIndex = filteredListModel.get(targetListIndex).originalIndex
+                        } else {
+                            targetBackendIndex = targetListIndex
+                        }
+                        
+                        console.log("Global navigation:", event.key === Qt.Key_Up ? "Up" : "Down", 
+                                   "to list index", targetListIndex, "backend index", targetBackendIndex)
+                    }
+                }
+                event.accepted = true
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                // Enter键播放当前选中的歌曲
+                if (playlistView.currentIndex >= 0) {
+                    var playIndex = root.searchMode ? 
+                        filteredListModel.get(playlistView.currentIndex).originalIndex : 
+                        playlistView.currentIndex
+                    playerBackend.playIndex(playIndex)
+                    console.log("Enter key pressed - playing item at index", playIndex)
+                    event.accepted = true
+                }
             }
         }
 
@@ -707,6 +774,22 @@ ApplicationWindow {
                     root.searchMode = false
                     console.log("ESC pressed in search - close search")
                     event.accepted = true
+                } else if (event.key === Qt.Key_Down) {
+                    // ↓键移动焦点到播放列表
+                    if (playlistView.count > 0) {
+                        playlistView.forceActiveFocus()
+                        playlistView.currentIndex = 0
+                        console.log("Down key pressed - moving focus to playlist, selected index 0")
+                    }
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    // Enter键播放第一个搜索结果
+                    if (playlistView.count > 0) {
+                        var playIndex = root.searchMode ? playlistView.model.get(0).originalIndex : 0
+                        playerBackend.playIndex(playIndex)
+                        console.log("Enter key pressed - playing first search result at index", playIndex)
+                    }
+                    event.accepted = true
                 }
             }
             
@@ -892,6 +975,57 @@ ApplicationWindow {
                             spacing: 15
                             clip: true
                             
+                            // 确保ListView可以获得焦点并保持焦点
+                            focus: true
+                            activeFocusOnTab: true
+                            
+                            // 键盘导航功能
+                            Keys.onPressed: function(event) {
+                                if (event.key === Qt.Key_Up) {
+                                    // ↑键向上选择
+                                    if (currentIndex > 0) {
+                                        currentIndex = currentIndex - 1
+                                        positionViewAtIndex(currentIndex, ListView.Contain)
+                                        console.log("Up key pressed - selected index", currentIndex)
+                                    } else if (currentIndex === 0 && count > 0) {
+                                        // 如果已经在第一个项目，移动焦点回搜索框
+                                        searchInput.forceActiveFocus()
+                                        console.log("Up key pressed at first item - moving focus back to search")
+                                    }
+                                    event.accepted = true
+                                } else if (event.key === Qt.Key_Down) {
+                                    // ↓键向下选择
+                                    if (currentIndex < count - 1) {
+                                        currentIndex = currentIndex + 1
+                                        positionViewAtIndex(currentIndex, ListView.Contain)
+                                        console.log("Down key pressed - selected index", currentIndex)
+                                    }
+                                    event.accepted = true
+                                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                    // Enter键播放选中的歌曲
+                                    if (currentIndex >= 0 && currentIndex < count) {
+                                        var playIndex = root.searchMode ? 
+                                            filteredListModel.get(currentIndex).originalIndex : 
+                                            currentIndex
+                                        playerBackend.playIndex(playIndex)
+                                        console.log("Enter key pressed - playing item at index", playIndex)
+                                    }
+                                    event.accepted = true
+                                } else if (event.key === Qt.Key_Escape) {
+                                    // ESC键关闭搜索模式
+                                    root.searchMode = false
+                                    console.log("ESC pressed in playlist - closing search mode")
+                                    event.accepted = true
+                                }
+                            }
+                            
+                            // 当ListView获得焦点时，确保有选中项
+                            onFocusChanged: {
+                                if (focus && count > 0 && currentIndex === -1) {
+                                    currentIndex = 0
+                                }
+                            }
+                            
                             // 过滤后的模型 - 使用ListModel而不是JS数组
                             ListModel { id: filteredListModel }
                             
@@ -959,10 +1093,13 @@ ApplicationWindow {
                                 target: root
                                 function onSearchTextChanged() {
                                     playlistView.updateFilteredModel()
+                                    // 搜索文本改变时重置选中项
+                                    playlistView.currentIndex = 0
                                 }
                             }
                             
                             delegate: Item {
+                                id: delegateRoot
                                 width: ListView.view.width
                                 height: 72
 
@@ -972,6 +1109,7 @@ ApplicationWindow {
                                 property string itemAlbum: model.album || ""
                                 property int itemDuration: model.duration || 0
                                 property int itemOriginalIndex: root.searchMode ? (model.originalIndex || -1) : index
+                                property bool isCurrentItem: ListView.isCurrentItem
                                 
                                 // 函数：生成高亮文本
                                 function highlightText(text, searchText) {
@@ -991,7 +1129,7 @@ ApplicationWindow {
                                     var matchText = text.substring(index, index + searchText.length);
                                     var afterMatch = text.substring(index + searchText.length);
                                     
-                                    return beforeMatch + '<font color="#4a9eff"><b>' + matchText + '</b></font>' + afterMatch;
+                                    return beforeMatch + '<font color="#ffffffff"><b>' + matchText + '</b></font>' + afterMatch;
                                 }
                                 
                                 MouseArea {
@@ -999,26 +1137,61 @@ ApplicationWindow {
                                     onClicked: {
                                         var playIndex = root.searchMode ? itemOriginalIndex : index
                                         playerBackend.playIndex(playIndex)
+                                        // 同步键盘导航位置到当前点击的项目
+                                        playlistView.currentIndex = index
+                                        playlistView.forceActiveFocus()
                                     }
                                     hoverEnabled: true
 
                                     Rectangle {
                                         anchors.fill: parent
-                                        color: parent.containsMouse ? "#4a9eff20" : "transparent"
+                                        color: "transparent"
                                         radius: 12
-                                        border.color: parent.containsMouse ? "#4a9eff40" : "transparent"
-                                        border.width: parent.containsMouse ? 1 : 0
+                                        border.color: "transparent"
+                                        border.width: 0
 
                                         Behavior on color {
-                                            ColorAnimation { duration: 67; easing.type: Easing.OutCubic }  // 加速3倍：200/3 ≈ 67
+                                            ColorAnimation { duration: 120; easing.type: Easing.OutCubic }
                                         }
                                         Behavior on border.color {
-                                            ColorAnimation { duration: 67; easing.type: Easing.OutCubic }  // 加速3倍：200/3 ≈ 67
+                                            ColorAnimation { duration: 120; easing.type: Easing.OutCubic }
                                         }
 
-                                        // 播放指示器（更精细）
+                                        // 双层高亮效果 - 品红色外层（悬停或选中状态）
+                                        Rectangle {
+                                            visible: parent.containsMouse || delegateRoot.isCurrentItem
+                                            anchors.fill: parent
+                                            anchors.margins: -2
+                                            color: "transparent"
+                                            radius: 14
+                                            border.color: "#ff1493" // 品红色
+                                            border.width: 2
+
+                                            Behavior on border.color {
+                                                ColorAnimation { duration: 120; easing.type: Easing.OutCubic }
+                                            }
+                                        }
+
+                                        // 双层高亮效果 - 青色内层（悬停或选中状态）
+                                        Rectangle {
+                                            visible: parent.containsMouse || delegateRoot.isCurrentItem
+                                            anchors.fill: parent
+                                            color: "transparent"
+                                            radius: 12
+                                            border.color: "#00ffff" // 青色
+                                            border.width: 2
+
+                                            Behavior on border.color {
+                                                ColorAnimation { duration: 120; easing.type: Easing.OutCubic }
+                                            }
+                                        }
+
+                                        // 播放指示器（仅在非悬停状态下显示）
                                         Rectangle {
                                             visible: {
+                                                if (parent.containsMouse) {
+                                                    return false // 悬停时隐藏播放指示器
+                                                }
                                                 var currentIndex = root.searchMode ? itemOriginalIndex : index
                                                 return playerBackend.currentIndex === currentIndex
                                             }
