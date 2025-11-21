@@ -630,6 +630,26 @@ bool PlayerBackend::eventFilter(QObject *obj, QEvent *event)
             emit escapeKeyPressed();
             return true; // 事件已处理
         }
+        else if (keyEvent->key() == Qt::Key_Space) {
+            qDebug() << "Space key detected, toggling play/pause";
+            togglePlay();
+            return true; // 事件已处理
+        }
+        else if (keyEvent->key() == Qt::Key_Z && (keyEvent->modifiers() & Qt::ControlModifier)) {
+            qDebug() << "Ctrl+Z detected, playing previous track";
+            previous();
+            return true; // 事件已处理
+        }
+        else if (keyEvent->key() == Qt::Key_X && (keyEvent->modifiers() & Qt::ControlModifier)) {
+            qDebug() << "Ctrl+X detected, playing next track";
+            next();
+            return true; // 事件已处理
+        }
+        else if (keyEvent->key() == Qt::Key_F && (keyEvent->modifiers() & Qt::ControlModifier)) {
+            qDebug() << "Ctrl+F detected, toggling search mode";
+            emit toggleSearchMode();
+            return true; // 事件已处理
+        }
     }
     return QObject::eventFilter(obj, event);
 }

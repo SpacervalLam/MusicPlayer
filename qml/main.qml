@@ -283,6 +283,16 @@ ApplicationWindow {
                 dockToRight()
             }
         }
+        
+        function onToggleSearchMode() {
+            // 处理Ctrl+F快捷键，切换搜索模式
+            root.searchMode = !root.searchMode
+            if (root.searchMode) {
+                console.log("Search mode enabled from backend signal")
+            } else {
+                console.log("Search mode disabled from backend signal")
+            }
+        }
     }
 
     // 主窗口鼠标事件监听（保留原逻辑并增强稳定性）
@@ -1129,7 +1139,7 @@ ApplicationWindow {
                                     var matchText = text.substring(index, index + searchText.length);
                                     var afterMatch = text.substring(index + searchText.length);
                                     
-                                    return beforeMatch + '<font color="#ffffffff"><b>' + matchText + '</b></font>' + afterMatch;
+                                    return beforeMatch + '<font color="#4a9eff"><b>' + matchText + '</b></font>' + afterMatch;
                                 }
                                 
                                 MouseArea {

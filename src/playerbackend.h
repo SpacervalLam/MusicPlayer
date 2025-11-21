@@ -117,6 +117,7 @@ signals:
     void volumeChanged();
     void isMutedChanged();
     void escapeKeyPressed();
+    void toggleSearchMode(); // 用于控制搜索模式切换的信号
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
